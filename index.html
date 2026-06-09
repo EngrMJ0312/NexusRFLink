@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus RFLink and Telemetry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2330;
+    --bg4: #21262d;
+    --border: #30363d;
+    --border2: #444c56;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --accent: #00d4aa;
+    --accent2: #005f4f;
+    --accent-dim: rgba(0,212,170,0.12);
+    --warn: #f0b429;
+    --warn-dim: rgba(240,180,41,0.12);
+    --danger: #f85149;
+    --danger-dim: rgba(248,81,73,0.12);
+    --good: #3fb950;
+    --good-dim: rgba(63,185,80,0.12);
+    --blue: #58a6ff;
+    --blue-dim: rgba(88,166,255,0.1);
+    --mono: 'Space Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex; align-items: center; gap: 0; height: 52px;
+  }
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px; margin-right: 2rem;
+    text-decoration: none; color: var(--text);
+  }
+  .nav-brand .logo {
+    width: 28px; height: 28px;
+    background: var(--accent); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 11px; font-weight: 700; color: #000;
+    letter-spacing: -0.5px;
+  }
+  .nav-brand span { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+  .nav-tabs { display: flex; gap: 0; overflow-x: auto; }
+  .nav-tab {
+    padding: 0 1rem; height: 52px; display: flex; align-items: center;
+    font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--text3); cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .chip {
+    font-size: 10px; font-family: var(--mono); padding: 3px 8px;
+    border-radius: 99px; letter-spacing: 0.05em;
+  }
+  .chip-green { background: var(--good-dim); color: var(--good); border: 1px solid rgba(63,185,80,0.3); }
+  .chip-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 2rem 1.5rem; max-width: 960px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── HERO ── */
+  .hero {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg2);
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle at 100% 0%, rgba(0,212,170,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-eyebrow { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.75rem; }
+  .hero h1 { font-size: 28px; font-weight: 600; line-height: 1.2; margin-bottom: 0.75rem; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { color: var(--text2); font-size: 14px; max-width: 520px; }
+  .hero-stats { display: flex; gap: 2rem; margin-top: 2rem; }
+  .hero-stat .val { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent); }
+  .hero-stat .lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ── SECTION ── */
+  .section-hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; }
+  .section-hdr h2 { font-size: 15px; font-weight: 600; }
+  .section-hdr .tag {
+    font-size: 10px; font-family: var(--mono); padding: 2px 7px;
+    border-radius: 4px; letter-spacing: 0.05em;
+    background: var(--bg4); color: var(--text3); border: 1px solid var(--border);
+  }
+  .panel {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem;
+  }
+  .panel-title {
+    font-family: var(--mono); font-size: 10px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .panel-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ── FORM FIELDS ── */
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label {
+    font-size: 11px; font-weight: 500; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .field-row { display: flex; gap: 8px; align-items: flex-end; }
+  input[type=number], input[type=text], select {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: var(--mono); font-size: 13px;
+    padding: 8px 10px; width: 100%;
+    transition: border-color 0.15s;
+  }
+  input[type=number]:focus, input[type=text]:focus, select:focus {
+    outline: none; border-color: var(--accent);
+  }
+  input[readonly] {
+    background: var(--bg3); color: var(--accent); cursor: default;
+    border-color: var(--border);
+  }
+  select { cursor: pointer; }
+  select option { background: var(--bg2); }
+  .unit { font-size: 11px; color: var(--text3); white-space: nowrap; align-self: center; font-family: var(--mono); }
+
+  /* ── RESULTS TABLE ── */
+  .result-table { width: 100%; border-collapse: collapse; }
+  .result-table tr { border-bottom: 1px solid var(--border); }
+  .result-table tr:last-child { border-bottom: none; }
+  .result-table td { padding: 8px 4px; font-size: 13px; }
+  .result-table td:first-child { color: var(--text2); }
+  .result-table td:last-child {
+    text-align: right; font-family: var(--mono);
+    color: var(--text); font-weight: 500;
+  }
+  .result-table .subtotal td { border-top: 1px solid var(--border2); }
+  .result-table .subtotal td:last-child { color: var(--warn); }
+
+  /* ── HIGHLIGHT BOX ── */
+  .result-box {
+    background: var(--accent-dim); border: 1px solid rgba(0,212,170,0.3);
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1rem;
+  }
+  .result-box .label { font-size: 13px; color: var(--accent); font-weight: 500; }
+  .result-box .value { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent); }
+  .result-box.warn { background: var(--warn-dim); border-color: rgba(240,180,41,0.3); }
+  .result-box.warn .label, .result-box.warn .value { color: var(--warn); }
+  .result-box.danger { background: var(--danger-dim); border-color: rgba(248,81,73,0.3); }
+  .result-box.danger .label, .result-box.danger .value { color: var(--danger); }
+  .result-box.good { background: var(--good-dim); border-color: rgba(63,185,80,0.3); }
+  .result-box.good .label, .result-box.good .value { color: var(--good); }
+
+  /* ── MARGIN BADGE ── */
+  .margin-badge {
+    display: inline-block; padding: 4px 12px;
+    border-radius: 99px; font-family: var(--mono); font-size: 13px; font-weight: 700;
+  }
+  .margin-badge.ok { background: var(--good-dim); color: var(--good); border: 1px solid rgba(63,185,80,0.3); }
+  .margin-badge.warn { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(240,180,41,0.3); }
+  .margin-badge.fail { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+
+  /* ── BUDGET ROW ── */
+  .budget-row {
+    display: flex; justify-content: space-between;
+    padding: 7px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .budget-row:last-child { border-bottom: none; }
+  .budget-row .lbl { color: var(--text2); }
+  .budget-row .val { font-family: var(--mono); color: var(--text); }
+  .budget-row .val.pos { color: var(--good); }
+  .budget-row .val.neg { color: var(--danger); }
+  .budget-row.header { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding-bottom: 4px; }
+  .budget-row.sum { border-top: 1px solid var(--border2); margin-top: 4px; padding-top: 10px; }
+  .budget-row.sum .lbl { font-weight: 600; color: var(--text); }
+
+  /* ── MODULATION TABLE ── */
+  .mod-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mod-table th {
+    text-align: left; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text3); padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mod-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+  .mod-table tbody tr { cursor: pointer; transition: background 0.1s; }
+  .mod-table tbody tr:hover { background: var(--bg3); }
+  .mod-table tbody tr.selected { background: var(--accent-dim); }
+  .mod-table tbody tr.selected td { color: var(--accent); }
+  .mod-table .mono-val { font-family: var(--mono); }
+  .mod-table tr:last-child td { border-bottom: none; }
+
+  /* ── LINK CHAIN ── */
+  .chain {
+    display: flex; align-items: center; gap: 0; margin: 1.5rem 0;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .chain-node {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px; min-width: 110px;
+    text-align: center; flex-shrink: 0;
+  }
+  .chain-node .node-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .chain-node .node-val { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 2px; }
+  .chain-node .node-unit { font-size: 10px; color: var(--text3); }
+  .chain-node.highlight { border-color: var(--accent); background: var(--accent-dim); }
+  .chain-arrow {
+    color: var(--border2); font-size: 16px; flex-shrink: 0; padding: 0 4px;
+  }
+
+  /* ── DIVIDER ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+  /* ── TABS (sub) ── */
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .sub-tab {
+    padding: 6px 14px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; background: none; color: var(--text2);
+    transition: all 0.15s; letter-spacing: 0.03em;
+  }
+  .sub-tab:hover { border-color: var(--border2); color: var(--text); }
+  .sub-tab.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+
+  /* ── TOOLTIP ── */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-wrap .tip-icon { font-size: 11px; color: var(--text3); cursor: help; border-bottom: 1px dashed var(--text3); }
+  .tooltip-wrap .tip-box {
+    display: none; position: absolute; left: 0; top: calc(100% + 4px);
+    background: var(--bg4); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 8px 10px;
+    font-size: 11px; color: var(--text2); width: 220px; z-index: 50;
+    line-height: 1.5;
+  }
+  .tooltip-wrap:hover .tip-box { display: block; }
+
+  /* ── SUMMARY CARD ── */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .summary-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem;
+  }
+  .summary-card .s-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .summary-card .s-val { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+  .summary-card .s-unit { font-size: 11px; color: var(--text3); margin-left: 3px; }
+  .summary-card.ok .s-val { color: var(--good); }
+  .summary-card.warn .s-val { color: var(--warn); }
+  .summary-card.fail .s-val { color: var(--danger); }
+  .summary-card.neutral .s-val { color: var(--blue); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 2.5rem 1.5rem;
+    color: var(--text3); font-size: 11px; font-family: var(--mono);
+    border-top: 1px solid var(--border); margin-top: 2rem;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="logo">NX</div>
+    <span>Nexus RFLink and Telemetry</span>
+  </a>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview')">Overview</button>
+    <button class="nav-tab" onclick="showPage('transmitters')">Transmitters</button>
+    <button class="nav-tab" onclick="showPage('receivers')">Receivers</button>
+    <button class="nav-tab" onclick="showPage('antenna')">Antenna</button>
+    <button class="nav-tab" onclick="showPage('losses')">Path Losses</button>
+    <button class="nav-tab" onclick="showPage('modulation')">Modulation</button>
+    <button class="nav-tab" onclick="showPage('uplink')">Uplink Budget</button>
+    <button class="nav-tab" onclick="showPage('downlink')">Downlink Budget</button>
+  </div>
+  <div class="nav-right">
+    <span class="chip chip-blue">Nexus RFLink &amp; Telemetry</span>
+  </div>
+</nav>
+
+<!-- ═══════════ OVERVIEW ═══════════ -->
+<div id="page-overview" class="page active">
+  <div class="hero">
+    <div class="hero-eyebrow">◈ Nexus RFLink and Telemetry</div>
+    <h1>Satellite RF Link<br><span>Budget Calculator</span></h1>
+    <p>An interactive RF link budget calculator built as an independent reference model for satellite communications education. Configure your uplink command and downlink telemetry systems, compute propagation path losses, and evaluate link margin in real time.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="val" id="ov-uplink-margin">—</div><div class="lbl">Uplink Link Margin (dB)</div></div>
+      <div class="hero-stat"><div class="val" id="ov-downlink-margin">—</div><div class="lbl">Downlink Link Margin (dB)</div></div>
+      <div class="hero-stat"><div class="val" id="ov-uplink-eirp">—</div><div class="lbl">Uplink EIRP (dBW)</div></div>
+      <div class="hero-stat"><div class="val" id="ov-downlink-eirp">—</div><div class="lbl">Downlink EIRP (dBW)</div></div>
+    </div>
+  </div>
+
+  <div class="summary-grid" id="ov-summary"></div>
+
+  <!-- ── INTERACTIVE SETUP DIAGRAM ── -->
+  <div class="panel" style="padding:1.25rem 1.25rem 1.5rem">
+    <div class="panel-title">Interactive System Setup Diagram — drag sliders or edit values directly</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:1rem">Click any node to expand its controls. Drag the sliders on each node to update values — changes sync instantly to all calculation pages.</p>
+
+    <!-- UPLINK DIAGRAM -->
+    <div style="margin-bottom:0.5rem">
+      <span style="font-size:11px;font-family:var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:.1em">↑ Uplink Command Link — Ground Station (GS) → Spacecraft (S/C)</span>
+    </div>
+    <div style="position:relative;overflow:hidden;border-radius:var(--radius);background:var(--bg);border:1px solid var(--border);margin-bottom:1.5rem">
+      <svg id="svg-uplink" viewBox="0 0 920 160" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block;min-height:160px"></svg>
+      <!-- Expandable control panels, injected by JS -->
+      <div id="diag-up-panels" style="padding:0 1rem 1rem"></div>
+    </div>
+
+    <!-- DOWNLINK DIAGRAM -->
+    <div style="margin-bottom:0.5rem">
+      <span style="font-size:11px;font-family:var(--mono);color:var(--warn);text-transform:uppercase;letter-spacing:.1em">↓ Downlink Telemetry Link — Spacecraft (S/C) → Ground Station (GS)</span>
+    </div>
+    <div style="position:relative;overflow:hidden;border-radius:var(--radius);background:var(--bg);border:1px solid var(--border)">
+      <svg id="svg-downlink" viewBox="0 0 920 160" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block;min-height:160px"></svg>
+      <div id="diag-dn-panels" style="padding:0 1rem 1rem"></div>
+    </div>
+  </div>
+
+  <!-- ── LINK BUDGET WATERFALL ── -->
+  <div class="panel">
+    <div class="panel-title">Link Budget Waterfall — Uplink &amp; Downlink Comparison</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+      <div>
+        <p style="font-size:11px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">↑ Uplink</p>
+        <canvas id="canvas-up-waterfall" height="320" style="width:100%;border-radius:var(--radius)"></canvas>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--warn);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">↓ Downlink</p>
+        <canvas id="canvas-dn-waterfall" height="320" style="width:100%;border-radius:var(--radius)"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CHAIN (kept for JS compat, hidden) ── -->
+  <div style="display:none">
+    <div class="chain" id="ov-chain-up"></div>
+    <div class="chain" id="ov-chain-dn"></div>
+  </div>
+</div>
+
+<!-- ═══════════ TRANSMITTERS ═══════════ -->
+<div id="page-transmitters" class="page">
+  <div class="section-hdr"><h2>Transmitter (TX) Systems</h2><span class="tag">Transmitters (TX)</span></div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="switchSub('tx','up',this)">↑ Uplink — Ground Station (GS)</button>
+    <button class="sub-tab" onclick="switchSub('tx','dn',this)">↓ Downlink — Spacecraft (S/C)</button>
+  </div>
+
+  <div id="tx-up">
+    <div class="panel">
+      <div class="panel-title">Transmitter (TX) Power</div>
+      <div class="grid-2">
+        <div class="field"><label>Transmitter Output Power (Watts)</label>
+          <input type="number" id="up-pwr-w" value="10" min="0.001" step="0.1" oninput="compute()"></div>
+        <div>
+          <div class="field-row">
+            <div class="field" style="flex:1"><label>dBW</label><input type="number" id="up-pwr-dbw" readonly></div>
+            <div class="field" style="flex:1"><label>dBm</label><input type="number" id="up-pwr-dbm" readonly></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Cable / Waveguide (Feed Line) Losses</div>
+      <div class="grid-3">
+        <div class="field"><label>Feed Line Segment A Length (m)</label><input type="number" id="up-la" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment B Length (m)</label><input type="number" id="up-lb" value="0.3" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment C Length (m)</label><input type="number" id="up-lc" value="25" min="0" step="0.1" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Cable / Waveguide Type</label><input type="text" id="up-cable" value="Belden 9913"></div>
+        <div class="field"><label>Loss per Meter (dB/m)</label><input type="number" id="up-loss-m" value="0.05" min="0" step="0.001" oninput="compute()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">In-Line Components (Number of In-Line Connectors, Filters, Devices)</div>
+      <div class="grid-3">
+        <div class="field"><label>Number of In-Line Connectors</label><input type="number" id="up-conn" value="6" min="0" step="1" oninput="compute()"></div>
+        <div class="field"><label>Bandpass Filter (BPF) Insertion Loss (dB)</label><input type="number" id="up-filt" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Other In-Line Device Loss (dB)</label><input type="number" id="up-other" value="0.5" min="0" step="0.1" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>In-Line Device Description</label><input type="text" id="up-device" value="Directional Coupler"></div>
+        <div class="field"><label>Antenna Mismatch / VSWR Loss (dB)</label><input type="number" id="up-vswr" value="0.5" min="0" step="0.01" oninput="compute()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Results</div>
+      <table class="result-table">
+        <tr><td>Total Feed Line Length</td><td id="up-r-len">—</td></tr>
+        <tr><td>Cable / Waveguide Loss</td><td id="up-r-cable">—</td></tr>
+        <tr><td>In-Line Connector Loss (@ 0.05 dB/connector)</td><td id="up-r-conn">—</td></tr>
+        <tr><td>Bandpass Filter (BPF) Insertion Loss</td><td id="up-r-filt">—</td></tr>
+        <tr><td>Other In-Line Device Loss</td><td id="up-r-other">—</td></tr>
+        <tr><td>Antenna Mismatch / VSWR Loss</td><td id="up-r-vswr">—</td></tr>
+        <tr class="subtotal"><td>Total Feed Line Losses</td><td id="up-r-total">—</td></tr>
+      </table>
+      <div class="result-box"><span class="label">Net RF Power Delivered to Antenna Port</span><span class="value" id="up-r-ant">—</span></div>
+    </div>
+  </div>
+
+  <div id="tx-dn" style="display:none">
+    <div class="panel">
+      <div class="panel-title">Transmitter (TX) Power</div>
+      <div class="grid-2">
+        <div class="field"><label>Transmitter Output Power (Watts)</label>
+          <input type="number" id="dn-pwr-w" value="2" min="0.001" step="0.1" oninput="compute()"></div>
+        <div>
+          <div class="field-row">
+            <div class="field" style="flex:1"><label>dBW</label><input type="number" id="dn-pwr-dbw" readonly></div>
+            <div class="field" style="flex:1"><label>dBm</label><input type="number" id="dn-pwr-dbm" readonly></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Cable / Waveguide (Feed Line) Losses</div>
+      <div class="grid-3">
+        <div class="field"><label>Feed Line Segment A Length (m)</label><input type="number" id="dn-la" value="0.075" min="0" step="0.001" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment B Length (m)</label><input type="number" id="dn-lb" value="0.075" min="0" step="0.001" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment C Length (m)</label><input type="number" id="dn-lc" value="0.3" min="0" step="0.001" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Cable / Waveguide Type</label><input type="text" id="dn-cable" value="RG-188/AU"></div>
+        <div class="field"><label>Loss per Meter (dB/m)</label><input type="number" id="dn-loss-m" value="0.58" min="0" step="0.001" oninput="compute()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">In-Line Components (Number of In-Line Connectors, Filters, Devices)</div>
+      <div class="grid-3">
+        <div class="field"><label>Number of In-Line Connectors</label><input type="number" id="dn-conn" value="4" min="0" step="1" oninput="compute()"></div>
+        <div class="field"><label>Bandpass Filter (BPF) Insertion Loss (dB)</label><input type="number" id="dn-filt" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Other In-Line Device Loss (dB)</label><input type="number" id="dn-other" value="0.5" min="0" step="0.1" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>In-Line Device Description</label><input type="text" id="dn-device" value="Hybrid"></div>
+        <div class="field"><label>Antenna Mismatch / VSWR Loss (dB)</label><input type="number" id="dn-vswr" value="0.24" min="0" step="0.01" oninput="compute()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Results</div>
+      <table class="result-table">
+        <tr><td>Total Feed Line Length</td><td id="dn-r-len">—</td></tr>
+        <tr><td>Cable / Waveguide Loss</td><td id="dn-r-cable">—</td></tr>
+        <tr><td>In-Line Connector Loss (@ 0.05 dB/connector)</td><td id="dn-r-conn">—</td></tr>
+        <tr><td>Bandpass Filter (BPF) Insertion Loss</td><td id="dn-r-filt">—</td></tr>
+        <tr><td>Other In-Line Device Loss</td><td id="dn-r-other">—</td></tr>
+        <tr><td>Antenna Mismatch / VSWR Loss</td><td id="dn-r-vswr">—</td></tr>
+        <tr class="subtotal"><td>Total Feed Line Losses</td><td id="dn-r-total">—</td></tr>
+      </table>
+      <div class="result-box"><span class="label">Net RF Power Delivered to Antenna Port</span><span class="value" id="dn-r-ant">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ RECEIVERS ═══════════ -->
+<div id="page-receivers" class="page">
+  <div class="section-hdr"><h2>Receiver (RX) Systems</h2><span class="tag">Receiver (RX) / Noise</span></div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="switchSub('rx','up',this)">↑ Uplink — Spacecraft (S/C) Receiver (RX)</button>
+    <button class="sub-tab" onclick="switchSub('rx','dn',this)">↓ Downlink — Ground Station (GS) Receiver (RX)</button>
+  </div>
+
+  <div id="rx-up">
+    <div class="panel">
+      <div class="panel-title">Feed Line Losses — Antenna to Low-Noise Amplifier (LNA)</div>
+      <div class="grid-3">
+        <div class="field"><label>Feed Line Segment A Length (m)</label><input type="number" id="rxup-la" value="0.2" min="0" step="0.01" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment B Length (m)</label><input type="number" id="rxup-lb" value="0.1" min="0" step="0.01" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment C Length (m)</label><input type="number" id="rxup-lc" value="0.1" min="0" step="0.01" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Cable / Waveguide Type</label><input type="text" value="RG-188/AU"></div>
+        <div class="field"><label>Loss per Meter (dB/m)</label><input type="number" id="rxup-loss-m" value="0.4" min="0" step="0.01" oninput="compute()"></div>
+      </div>
+      <div class="grid-3" style="margin-top:12px">
+        <div class="field"><label>Bandpass Filter (BPF) Insertion Loss (dB)</label><input type="number" id="rxup-bpf" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Other In-Line Device Loss (dB)</label><input type="number" id="rxup-other" value="0.5" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Number of In-Line Connectors</label><input type="number" id="rxup-conn" value="6" min="0" step="1" oninput="compute()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">System Noise Temperature Parameters</div>
+      <div class="grid-3">
+        <div class="field"><label>Antenna / Sky Temperature — Ta (K)</label><input type="number" id="rxup-Ta" value="120" min="0" step="1" oninput="compute()"></div>
+        <div class="field"><label>Physical / Reference System Temperature — To (K)</label><input type="number" id="rxup-To" value="280" min="0" step="1" oninput="compute()"></div>
+        <div class="field"><label>Low-Noise Amplifier (LNA) Noise Temperature (K)</label><input type="number" id="rxup-Tlna" value="75" min="0" step="1" oninput="compute()"></div>
+      </div>
+      <div class="grid-3" style="margin-top:12px">
+        <div class="field"><label>Low-Noise Amplifier (LNA) Gain (dB)</label><input type="number" id="rxup-Glna" value="18" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>2nd Stage Amplifier Noise Temperature — T2nd (K)</label><input type="number" id="rxup-T2nd" value="500" min="0" step="1" oninput="compute()"></div>
+        <div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Results — System Noise Temperature (Ts)</div>
+      <table class="result-table">
+        <tr><td>Total Feed Line Length</td><td id="rxup-r-len">—</td></tr>
+        <tr><td>Total In-Line Losses — α (alpha, dB)</td><td id="rxup-r-lineloss">—</td></tr>
+        <tr><td>Feed Line Transmission Coefficient — a (linear)</td><td id="rxup-r-a">—</td></tr>
+        <tr><td>Low-Noise Amplifier (LNA) Gain (linear units)</td><td id="rxup-r-Glin">—</td></tr>
+        <tr class="subtotal"><td>System Noise Temperature — Ts (Kelvin)</td><td id="rxup-r-Ts">—</td></tr>
+      </table>
+      <div class="result-box"><span class="label">Ts = a·Ta + (1−a)·To + TLNA + T2nd/GLNA  (Noise Temp Formula)</span><span class="value" id="rxup-r-Ts2">— K</span></div>
+    </div>
+  </div>
+
+  <div id="rx-dn" style="display:none">
+    <div class="panel">
+      <div class="panel-title">Feed Line Losses — Antenna to Low-Noise Amplifier (LNA)</div>
+      <div class="grid-3">
+        <div class="field"><label>Feed Line Segment A Length (m)</label><input type="number" id="rxdn-la" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment B Length (m)</label><input type="number" id="rxdn-lb" value="0.3" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Feed Line Segment C Length (m)</label><input type="number" id="rxdn-lc" value="25" min="0" step="0.1" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Cable / Waveguide Type</label><input type="text" value="Belden 9913"></div>
+        <div class="field"><label>Loss per Meter (dB/m)</label><input type="number" id="rxdn-loss-m" value="0.05" min="0" step="0.001" oninput="compute()"></div>
+      </div>
+      <div class="grid-3" style="margin-top:12px">
+        <div class="field"><label>Bandpass Filter (BPF) Insertion Loss (dB)</label><input type="number" id="rxdn-bpf" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Other In-Line Device Loss (dB)</label><input type="number" id="rxdn-other" value="0.5" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Number of In-Line Connectors</label><input type="number" id="rxdn-conn" value="6" min="0" step="1" oninput="compute()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">System Noise Temperature Parameters</div>
+      <div class="grid-3">
+        <div class="field"><label>Antenna / Sky Temperature — Ta (K)</label><input type="number" id="rxdn-Ta" value="120" min="0" step="1" oninput="compute()"></div>
+        <div class="field"><label>Physical / Reference System Temperature — To (K)</label><input type="number" id="rxdn-To" value="290" min="0" step="1" oninput="compute()"></div>
+        <div class="field"><label>Low-Noise Amplifier (LNA) Noise Temperature (K)</label><input type="number" id="rxdn-Tlna" value="75" min="0" step="1" oninput="compute()"></div>
+      </div>
+      <div class="grid-3" style="margin-top:12px">
+        <div class="field"><label>Low-Noise Amplifier (LNA) Gain (dB)</label><input type="number" id="rxdn-Glna" value="20" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>2nd Stage Amplifier Noise Temperature — T2nd (K)</label><input type="number" id="rxdn-T2nd" value="500" min="0" step="1" oninput="compute()"></div>
+        <div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Results — System Noise Temperature (Ts)</div>
+      <table class="result-table">
+        <tr><td>Total In-Line Losses — α (alpha, dB)</td><td id="rxdn-r-lineloss">—</td></tr>
+        <tr><td>Feed Line Transmission Coefficient — a (linear)</td><td id="rxdn-r-a">—</td></tr>
+        <tr><td>Low-Noise Amplifier (LNA) Gain (linear units)</td><td id="rxdn-r-Glin">—</td></tr>
+        <tr class="subtotal"><td>System Noise Temperature — Ts (Kelvin)</td><td id="rxdn-r-Ts">—</td></tr>
+      </table>
+      <div class="result-box"><span class="label">Ground Station (GS) System Noise Temperature — Ts</span><span class="value" id="rxdn-r-Ts2">— K</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ANTENNA ═══════════ -->
+<div id="page-antenna" class="page">
+  <div class="section-hdr"><h2>Antenna Gain and Pointing Losses</h2><span class="tag">Antenna (ANT)</span></div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="switchSub('ant','up',this)">↑ Uplink</button>
+    <button class="sub-tab" onclick="switchSub('ant','dn',this)">↓ Downlink</button>
+  </div>
+
+  <div id="ant-up">
+    <div class="panel">
+      <div class="panel-title">Ground Station (GS) Transmitter (TX) Antenna</div>
+      <div class="grid-2">
+        <div class="field"><label>Uplink Center Frequency (MHz)</label><input type="number" id="ant-up-freq" value="145.9" min="1" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>TX Antenna Type</label>
+          <select id="ant-up-type" onchange="compute()">
+            <option value="helix">Helix</option>
+            <option value="yagi">Yagi</option>
+            <option value="parabolic">Parabolic Reflector</option>
+            <option value="user">User Defined</option>
+          </select>
+        </div>
+      </div>
+      <div id="ant-up-helix-params">
+        <div class="grid-3" style="margin-top:12px">
+          <div class="field"><label>Turns (n)</label><input type="number" id="ant-up-hturns" value="10.5" min="1" step="0.5" oninput="compute()"></div>
+          <div class="field"><label>Turn Spacing (λ)</label><input type="number" id="ant-up-hspacing" value="0.25" min="0.1" step="0.05" oninput="compute()"></div>
+          <div class="field"><label>Circumference (λ)</label><input type="number" id="ant-up-hcirc" value="1" min="0.5" step="0.05" oninput="compute()"></div>
+        </div>
+      </div>
+      <div id="ant-up-yagi-params" style="display:none">
+        <div class="field" style="margin-top:12px"><label>Boom Length (λ)</label><input type="number" id="ant-up-yboom" value="3.2" min="0.35" step="0.1" oninput="compute()"></div>
+      </div>
+      <div id="ant-up-para-params" style="display:none">
+        <div class="grid-2" style="margin-top:12px">
+          <div class="field"><label>Dish Diameter (m)</label><input type="number" id="ant-up-pdiam" value="5.4" min="0.1" step="0.1" oninput="compute()"></div>
+          <div class="field"><label>Aperture Efficiency</label><input type="number" id="ant-up-peff" value="0.55" min="0.1" max="1" step="0.01" oninput="compute()"></div>
+        </div>
+      </div>
+      <div id="ant-up-user-params" style="display:none">
+        <div class="field" style="margin-top:12px"><label>User Defined Gain (dBiC)</label><input type="number" id="ant-up-ugain" value="18.5" step="0.1" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Computed Antenna Gain (dBiC — dB over isotropic circular)</label><input type="number" id="ant-up-gain" readonly></div>
+        <div class="field"><label>Antenna Pointing Error — θ (degrees)</label><input type="number" id="ant-up-point" value="5" min="0" max="90" step="1" oninput="compute()"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Antenna Pointing Loss (dB)</label><input type="number" id="ant-up-ploss" readonly></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Spacecraft (S/C) Receiver (RX) Antenna</div>
+      <div class="field"><label>Spacecraft TX Antenna Type</label>
+        <select id="ant-sc-type" onchange="compute()">
+          <option value="monopole">Monopole (2.15 dBiL)</option>
+          <option value="dipole">Dipole (2.15 dBiL)</option>
+          <option value="canted">Canted Turnstile (2 dBiC)</option>
+          <option value="qfh">Quadrifilar Helix (4 dBiC)</option>
+          <option value="patch">Patch (6 dBi)</option>
+          <option value="iso">Isotropic (0 dBi)</option>
+        </select>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Spacecraft (S/C) Antenna Gain (dBi — dB over isotropic)</label><input type="number" id="ant-sc-gain" readonly></div>
+        <div class="field"><label>Spacecraft (S/C) Off-Axis Boresight Angle — θ2 (degrees)</label><input type="number" id="ant-sc-angle" value="20" min="0" max="180" step="1" oninput="compute()"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Spacecraft (S/C) Antenna Antenna Pointing Loss (dB)</label><input type="number" id="ant-sc-ploss" readonly></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Antenna Co-Polarization Loss — Uplink Command Link</div>
+      <div class="grid-3">
+        <div class="field"><label>Transmitter (TX) Antenna Axial Ratio (dB)</label><input type="number" id="pol-up-tx" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Receiver (RX) Antenna Axial Ratio (dB)</label><input type="number" id="pol-up-rx" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Polarization Angle between Antenna Major Axes — θ (degrees)</label><input type="number" id="pol-up-ang" value="90" min="0" max="180" step="1" oninput="compute()"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Co-Antenna Co-Polarization Loss (dB)</label><input type="number" id="pol-up-loss" readonly></div>
+    </div>
+  </div>
+
+  <div id="ant-dn" style="display:none">
+    <div class="panel">
+      <div class="panel-title">Spacecraft (S/C) Transmitter (TX) Antenna — Downlink</div>
+      <div class="grid-2">
+        <div class="field"><label>Downlink Center Frequency (MHz)</label><input type="number" id="ant-dn-freq" value="436.5" min="1" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>TX Antenna Type</label>
+          <select id="ant-dn-type" onchange="compute()">
+            <option value="canted" selected>Canted Turnstile (2 dBiC)</option>
+            <option value="monopole">Monopole (2.15 dBiL)</option>
+            <option value="dipole">Dipole (2.15 dBiL)</option>
+            <option value="qfh">Quadrifilar Helix (4 dBiC)</option>
+            <option value="patch">Patch (6 dBi)</option>
+            <option value="iso">Isotropic (0 dBi)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Spacecraft TX Gain (dBi)</label><input type="number" id="ant-dn-sc-gain" readonly></div>
+        <div class="field"><label>Spacecraft (S/C) Off-Axis Boresight Angle — θ (degrees)</label><input type="number" id="ant-dn-sc-angle" value="20" min="0" max="180" step="1" oninput="compute()"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>S/C TX Antenna Pointing Loss (dB)</label><input type="number" id="ant-dn-sc-ploss" readonly></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Ground Station (GS) Receiver (RX) Antenna</div>
+      <div class="field"><label>Ground Station (GS) Receiver (RX) TX Antenna Type</label>
+        <select id="ant-gs-dn-type" onchange="compute()">
+          <option value="helix" selected>Helix</option>
+          <option value="yagi">Yagi</option>
+          <option value="parabolic">Parabolic Reflector</option>
+          <option value="user">User Defined</option>
+        </select>
+      </div>
+      <div id="ant-gs-helix-params">
+        <div class="grid-3" style="margin-top:12px">
+          <div class="field"><label>Turns (n)</label><input type="number" id="ant-gs-hturns" value="10.5" min="1" step="0.5" oninput="compute()"></div>
+          <div class="field"><label>Turn Spacing (λ)</label><input type="number" id="ant-gs-hspacing" value="0.25" step="0.05" oninput="compute()"></div>
+          <div class="field"><label>Circumference (λ)</label><input type="number" id="ant-gs-hcirc" value="1" step="0.05" oninput="compute()"></div>
+        </div>
+      </div>
+      <div id="ant-gs-yagi-params" style="display:none">
+        <div class="field" style="margin-top:12px"><label>Boom Length (λ)</label><input type="number" id="ant-gs-yboom" value="2" min="0.35" step="0.1" oninput="compute()"></div>
+      </div>
+      <div id="ant-gs-para-params" style="display:none">
+        <div class="grid-2" style="margin-top:12px">
+          <div class="field"><label>Dish Diameter (m)</label><input type="number" id="ant-gs-pdiam" value="2" min="0.1" step="0.1" oninput="compute()"></div>
+          <div class="field"><label>Aperture Efficiency</label><input type="number" id="ant-gs-peff" value="0.6" min="0.1" max="1" step="0.01" oninput="compute()"></div>
+        </div>
+      </div>
+      <div id="ant-gs-user-params" style="display:none">
+        <div class="field" style="margin-top:12px"><label>User Defined Gain (dBiC)</label><input type="number" id="ant-gs-ugain" value="18.5" step="0.1" oninput="compute()"></div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field"><label>Computed Antenna Gain (dBiC — dB over isotropic circular)</label><input type="number" id="ant-gs-dn-gain" readonly></div>
+        <div class="field"><label>Antenna Pointing Error — θ (degrees)</label><input type="number" id="ant-gs-dn-point" value="5" min="0" max="90" step="1" oninput="compute()"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>GS RX Antenna Pointing Loss (dB)</label><input type="number" id="ant-gs-dn-ploss" readonly></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Antenna Co-Polarization Loss — Downlink Telemetry Link</div>
+      <div class="grid-3">
+        <div class="field"><label>Transmitter (TX) Antenna Axial Ratio (dB)</label><input type="number" id="pol-dn-tx" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Receiver (RX) Antenna Axial Ratio (dB)</label><input type="number" id="pol-dn-rx" value="1" min="0" step="0.1" oninput="compute()"></div>
+        <div class="field"><label>Polarization Angle between Antenna Major Axes — θ (degrees)</label><input type="number" id="pol-dn-ang" value="90" min="0" max="180" step="1" oninput="compute()"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Co-Antenna Co-Polarization Loss (dB)</label><input type="number" id="pol-dn-loss" readonly></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ LOSSES ═══════════ -->
+<div id="page-losses" class="page">
+  <div class="section-hdr"><h2>Path Losses</h2><span class="tag">Propagation</span></div>
+  <div class="panel">
+    <div class="panel-title">Orbital / Propagation Path Parameters</div>
+    <div class="grid-3">
+      <div class="field"><label>Slant Range — Distance from Ground Station to Spacecraft (km)</label><input type="number" id="path-range" value="2000" min="100" step="10" oninput="compute()"></div>
+      <div class="field"><label>Minimum Elevation Angle above Horizon (degrees)</label><input type="number" id="path-elev" value="5" min="0" max="90" step="1" oninput="compute()"></div>
+      <div class="field"><label>Rain / Precipitation Attenuation — Uplink (dB)</label><input type="number" id="path-rain-up" value="0" min="0" step="0.1" oninput="compute()"></div>
+    </div>
+    <div class="grid-2" style="margin-top:12px">
+      <div class="field"><label>Rain / Precipitation Attenuation — Downlink (dB)</label><input type="number" id="path-rain-dn" value="0" min="0" step="0.1" oninput="compute()"></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Computed Propagation Path Losses</div>
+    <div class="grid-2">
+      <div>
+        <p style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Uplink (<span id="pl-up-freq-lbl">—</span> MHz)</p>
+        <table class="result-table">
+          <tr><td>Free-space path loss</td><td id="pl-up-fsl">—</td></tr>
+          <tr><td>Atmospheric loss</td><td id="pl-up-atm">—</td></tr>
+          <tr><td>Ionospheric loss</td><td id="pl-up-ion">—</td></tr>
+          <tr><td>Rain loss</td><td id="pl-up-rain">—</td></tr>
+          <tr class="subtotal"><td>Total path loss</td><td id="pl-up-total">—</td></tr>
+        </table>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Downlink (<span id="pl-dn-freq-lbl">—</span> MHz)</p>
+        <table class="result-table">
+          <tr><td>Free-space path loss</td><td id="pl-dn-fsl">—</td></tr>
+          <tr><td>Atmospheric loss</td><td id="pl-dn-atm">—</td></tr>
+          <tr><td>Ionospheric loss</td><td id="pl-dn-ion">—</td></tr>
+          <tr><td>Rain loss</td><td id="pl-dn-rain">—</td></tr>
+          <tr class="subtotal"><td>Total path loss</td><td id="pl-dn-total">—</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODULATION ═══════════ -->
+<div id="page-modulation" class="page">
+  <div class="section-hdr"><h2>Modulation / Demodulation (Modem)</h2><span class="tag">Energy per Bit to Noise Density Ratio (Eb/No)</span></div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="switchSub('mod','up',this)">↑ Uplink Command Link</button>
+    <button class="sub-tab" onclick="switchSub('mod','dn',this)">↓ Downlink Telemetry Link</button>
+  </div>
+
+  <div id="mod-up">
+    <div class="panel">
+      <div class="panel-title">Uplink Command Link — Modulation/Coding Options (click row to select)</div>
+      <table class="mod-table" id="mod-up-table">
+        <thead><tr><th>#</th><th>Modulation</th><th>Coding</th><th>BER</th><th>Req. Energy per Bit to Noise Density Ratio (Eb/No) (dB)</th></tr></thead>
+        <tbody id="mod-up-tbody"></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Demodulator Implementation Loss</div>
+      <div class="field"><label>Demodulator Implementation Loss Loss Estimate (dB)</label><input type="number" id="mod-up-impl" value="1" min="0" step="0.1" oninput="compute()"></div>
+      <div class="result-box" style="margin-top:1rem"><span class="label">Energy per Bit to Noise Density Ratio (Eb/No) Threshold (Required + Impl. Loss)</span><span class="value" id="mod-up-threshold">—</span></div>
+    </div>
+  </div>
+
+  <div id="mod-dn" style="display:none">
+    <div class="panel">
+      <div class="panel-title">Downlink Telemetry Link — Modulation/Coding Options (click row to select)</div>
+      <table class="mod-table" id="mod-dn-table">
+        <thead><tr><th>#</th><th>Modulation</th><th>Coding</th><th>BER</th><th>Req. Energy per Bit to Noise Density Ratio (Eb/No) (dB)</th></tr></thead>
+        <tbody id="mod-dn-tbody"></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Demodulator Implementation Loss</div>
+      <div class="field"><label>Demodulator Implementation Loss Loss Estimate (dB)</label><input type="number" id="mod-dn-impl" value="0" min="0" step="0.1" oninput="compute()"></div>
+      <div class="result-box" style="margin-top:1rem"><span class="label">Energy per Bit to Noise Density Ratio (Eb/No) Threshold (Required + Impl. Loss)</span><span class="value" id="mod-dn-threshold">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ UPLINK BUDGET ═══════════ -->
+<div id="page-uplink" class="page">
+  <div class="section-hdr"><h2>Uplink Command Link Budget</h2><span class="tag">Ground Station (GS) → Spacecraft (S/C)</span></div>
+  <div class="grid-2">
+    <div class="field"><label>System Data Rate (bps — bits per second)</label><input type="number" id="ul-datarate" value="9600" min="1" step="100" oninput="compute()"></div>
+    <div class="field"><label>Receiver Noise Bandwidth (Hz)</label><input type="number" id="ul-bw" value="15000" min="100" step="100" oninput="compute()"></div>
+  </div>
+  <div class="panel" style="margin-top:1.25rem">
+    <div class="panel-title">Uplink Budget — Energy per Bit to Noise Density Ratio (Eb/No) Method</div>
+    <div class="budget-row header"><span class="lbl">Parameter</span><span class="val">Value</span></div>
+    <div class="budget-row"><span class="lbl">Ground Station (GS) Transmitter (TX) Power</span><span class="val" id="ul-b-pwr">—</span></div>
+    <div class="budget-row"><span class="lbl">GS Transmitter (TX) Line Losses</span><span class="val neg" id="ul-b-txloss">—</span></div>
+    <div class="budget-row"><span class="lbl">Ground Station (GS) TX Antenna Gain</span><span class="val pos" id="ul-b-txgain">—</span></div>
+    <div class="budget-row sum"><span class="lbl">Ground Station Effective Isotropic Radiated Power (EIRP)</span><span class="val" id="ul-b-eirp">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Ground Station (GS) Antenna Pointing Loss</span><span class="val neg" id="ul-b-ptloss-gs">—</span></div>
+    <div class="budget-row"><span class="lbl">Antenna Co-Polarization Loss</span><span class="val neg" id="ul-b-polloss">—</span></div>
+    <div class="budget-row"><span class="lbl">Free-Space Path Loss (FSPL)</span><span class="val neg" id="ul-b-fsl">—</span></div>
+    <div class="budget-row"><span class="lbl">Atmospheric Gas Absorption Loss</span><span class="val neg" id="ul-b-atm">—</span></div>
+    <div class="budget-row"><span class="lbl">Ionospheric Absorption / Scintillation Loss</span><span class="val neg" id="ul-b-ion">—</span></div>
+    <div class="budget-row"><span class="lbl">Rain / Precipitation Attenuation</span><span class="val neg" id="ul-b-rain">—</span></div>
+    <div class="budget-row sum"><span class="lbl">Isotropic Signal Level at Spacecraft (S/C)</span><span class="val" id="ul-b-iso">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Spacecraft (S/C) Antenna Pointing Loss</span><span class="val neg" id="ul-b-ptloss-sc">—</span></div>
+    <div class="budget-row"><span class="lbl">Spacecraft (S/C) Antenna Gain</span><span class="val pos" id="ul-b-scgain">—</span></div>
+    <div class="budget-row"><span class="lbl">Spacecraft (S/C) Receiver (RX) Feed Line Losses</span><span class="val neg" id="ul-b-rxloss">—</span></div>
+    <div class="budget-row"><span class="lbl">Spacecraft (S/C) System Noise Temperature — Ts (Kelvin)</span><span class="val" id="ul-b-ts">—</span></div>
+    <div class="budget-row sum"><span class="lbl">Spacecraft (S/C) Figure of Merit — G/T (Antenna Gain / System Noise Temp)</span><span class="val" id="ul-b-gt">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Signal-to-Noise Power Spectral Density — S/No (dBHz)</span><span class="val" id="ul-b-sno">—</span></div>
+    <div class="budget-row"><span class="lbl">System Data Rate — R (dBHz)</span><span class="val" id="ul-b-dr">—</span></div>
+    <div class="budget-row sum"><span class="lbl">System Energy per Bit to Noise Density Ratio (Eb/No)</span><span class="val" id="ul-b-ebno">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Required Energy per Bit to Noise Density Ratio (Eb/No) (Threshold)</span><span class="val" id="ul-b-req">—</span></div>
+  </div>
+  <div id="ul-margin-box" class="result-box" style="margin-top:0.75rem">
+    <span class="label" id="ul-margin-lbl">Link Margin</span>
+    <span class="value" id="ul-b-margin">—</span>
+  </div>
+</div>
+
+<!-- ═══════════ DOWNLINK BUDGET ═══════════ -->
+<div id="page-downlink" class="page">
+  <div class="section-hdr"><h2>Downlink Telemetry Link Budget</h2><span class="tag">Spacecraft (S/C) → Ground Station (GS)</span></div>
+  <div class="grid-2">
+    <div class="field"><label>System Data Rate (bps — bits per second)</label><input type="number" id="dl-datarate" value="9600" min="1" step="100" oninput="compute()"></div>
+    <div class="field"><label>Receiver Noise Bandwidth (Hz)</label><input type="number" id="dl-bw" value="10000" min="100" step="100" oninput="compute()"></div>
+  </div>
+  <div class="panel" style="margin-top:1.25rem">
+    <div class="panel-title">Downlink Budget — Energy per Bit to Noise Density Ratio (Eb/No) Method</div>
+    <div class="budget-row header"><span class="lbl">Parameter</span><span class="val">Value</span></div>
+    <div class="budget-row"><span class="lbl">Spacecraft (S/C) Transmitter (TX) Power</span><span class="val" id="dl-b-pwr">—</span></div>
+    <div class="budget-row"><span class="lbl">S/C Transmitter (TX) Line Losses</span><span class="val neg" id="dl-b-txloss">—</span></div>
+    <div class="budget-row"><span class="lbl">Spacecraft (S/C) TX Antenna Gain</span><span class="val pos" id="dl-b-txgain">—</span></div>
+    <div class="budget-row sum"><span class="lbl">Spacecraft Effective Isotropic Radiated Power (EIRP)</span><span class="val" id="dl-b-eirp">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Spacecraft (S/C) Antenna Pointing Loss</span><span class="val neg" id="dl-b-ptloss-sc">—</span></div>
+    <div class="budget-row"><span class="lbl">Antenna Co-Polarization Loss</span><span class="val neg" id="dl-b-polloss">—</span></div>
+    <div class="budget-row"><span class="lbl">Free-Space Path Loss (FSPL)</span><span class="val neg" id="dl-b-fsl">—</span></div>
+    <div class="budget-row"><span class="lbl">Atmospheric Gas Absorption Loss</span><span class="val neg" id="dl-b-atm">—</span></div>
+    <div class="budget-row"><span class="lbl">Ionospheric Absorption / Scintillation Loss</span><span class="val neg" id="dl-b-ion">—</span></div>
+    <div class="budget-row"><span class="lbl">Rain / Precipitation Attenuation</span><span class="val neg" id="dl-b-rain">—</span></div>
+    <div class="budget-row sum"><span class="lbl">Isotropic Signal Level at Ground Station (GS)</span><span class="val" id="dl-b-iso">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Ground Station (GS) Antenna Pointing Loss</span><span class="val neg" id="dl-b-ptloss-gs">—</span></div>
+    <div class="budget-row"><span class="lbl">Ground Station (GS) Antenna Gain</span><span class="val pos" id="dl-b-gsgain">—</span></div>
+    <div class="budget-row"><span class="lbl">Ground Station (GS) Receiver (RX) Feed Line Losses</span><span class="val neg" id="dl-b-rxloss">—</span></div>
+    <div class="budget-row"><span class="lbl">Ground Station (GS) System Noise Temperature — Ts (Kelvin)</span><span class="val" id="dl-b-ts">—</span></div>
+    <div class="budget-row sum"><span class="lbl">GS Figure of Merit (G/T)</span><span class="val" id="dl-b-gt">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Signal-to-Noise Power Spectral Density — S/No (dBHz)</span><span class="val" id="dl-b-sno">—</span></div>
+    <div class="budget-row"><span class="lbl">System Data Rate — R (dBHz)</span><span class="val" id="dl-b-dr">—</span></div>
+    <div class="budget-row sum"><span class="lbl">System Energy per Bit to Noise Density Ratio (Eb/No)</span><span class="val" id="dl-b-ebno">—</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="lbl">Required Energy per Bit to Noise Density Ratio (Eb/No) (Threshold)</span><span class="val" id="dl-b-req">—</span></div>
+  </div>
+  <div id="dl-margin-box" class="result-box" style="margin-top:0.75rem">
+    <span class="label" id="dl-margin-lbl">Link Margin</span>
+    <span class="value" id="dl-b-margin">—</span>
+  </div>
+</div>
+
+<footer>Nexus RFLink and Telemetry · Digital Twin · For educational use · Satellite RF Link Budget Reference Model</footer>
+
+<script>
+// ── DATA ──
+const MOD_OPTIONS = [
+  {mod:'AFSK/FM', code:'None', ber:1e-4, ebno:21},
+  {mod:'AFSK/FM', code:'None', ber:1e-5, ebno:23.2},
+  {mod:'G3RUH FSK', code:'None', ber:1e-4, ebno:16.7},
+  {mod:'G3RUH FSK', code:'None', ber:1e-5, ebno:18},
+  {mod:'Non-Coherent FSK', code:'None', ber:1e-4, ebno:13.4},
+  {mod:'Non-Coherent FSK', code:'None', ber:1e-5, ebno:13.8},
+  {mod:'Coherent FSK', code:'None', ber:1e-4, ebno:10.5},
+  {mod:'Coherent FSK', code:'None', ber:1e-5, ebno:11.9},
+  {mod:'GMSK', code:'None', ber:1e-4, ebno:8.4},
+  {mod:'GMSK', code:'None', ber:1e-5, ebno:9.6},
+  {mod:'BPSK', code:'None', ber:1e-5, ebno:9.6},
+  {mod:'BPSK', code:'None', ber:1e-6, ebno:10.5},
+  {mod:'QPSK', code:'None', ber:1e-5, ebno:9.6},
+  {mod:'QPSK', code:'None', ber:1e-6, ebno:10.5},
+  {mod:'BPSK', code:'Conv R=1/2 K=7', ber:1e-6, ebno:4.8},
+  {mod:'BPSK', code:'Conv+R.S.(255,223)', ber:1e-6, ebno:2.5},
+  {mod:'BPSK', code:'Conv R=1/6,K=15+R.S.', ber:1e-7, ebno:0.8},
+  {mod:'User Defined', code:'None', ber:1e-5, ebno:9.6},
+];
+const MOD_OPTIONS_DL = [...MOD_OPTIONS, {mod:'BPSK', code:'Turbo Code', ber:1e-6, ebno:0.75}];
+
+let selModUp = 4; // 0-indexed (option 5 in sheet = Non-Coherent FSK BER 1e-4)
+let selModDn = 2; // G3RUH FSK BER 1e-4
+
+// Atmos loss table: [elev_deg, loss_dB]
+const ATMOS_TABLE = [[0,10.2],[2.5,4.6],[5,2.1],[10,1.1],[30,0.4],[45,0.3],[90,0]];
+// Ionos loss table: [freq_MHz, loss_dB]
+const IONOS_TABLE = [[146,0.7],[438,0.4],[2410,0.1]];
+
+function fmt(v, d=2){ return isFinite(v) ? v.toFixed(d) : '—'; }
+function fmtdB(v){ return isFinite(v) ? v.toFixed(2)+' dB' : '—'; }
+function fmtK(v){ return isFinite(v) ? v.toFixed(1)+' K' : '—'; }
+function fmtDbw(v){ return isFinite(v) ? v.toFixed(2)+' dBW' : '—'; }
+function fmtDbhz(v){ return isFinite(v) ? v.toFixed(2)+' dBHz' : '—'; }
+function fmtDbk(v){ return isFinite(v) ? v.toFixed(2)+' dB/K' : '—'; }
+function gv(id){ return parseFloat(document.getElementById(id)?.value)||0; }
+function sv(id,v){ const el=document.getElementById(id); if(el) el.value=isFinite(v)?v.toFixed(2):''; }
+function st(id,txt){ const el=document.getElementById(id); if(el) el.textContent=txt; }
+
+// Interp atmospheric loss
+function atmosLoss(elev){
+  const t=ATMOS_TABLE;
+  if(elev<=t[0][0]) return t[0][1];
+  for(let i=1;i<t.length;i++){
+    if(elev<=t[i][0]){
+      const f=(elev-t[i-1][0])/(t[i][0]-t[i-1][0]);
+      return t[i-1][1]+(t[i][1]-t[i-1][1])*f;
+    }
+  }
+  return 0;
+}
+function ionosLoss(freq){
+  const t=IONOS_TABLE;
+  if(freq<=t[0][0]) return t[0][1];
+  for(let i=1;i<t.length;i++){
+    if(freq<=t[i][0]){
+      const f=(freq-t[i-1][0])/(t[i][0]-t[i-1][0]);
+      return t[i-1][1]+(t[i][1]-t[i-1][1])*f;
+    }
+  }
+  return 0.1;
+}
+
+// Antenna gain calc
+const SC_GAINS = {monopole:2.15, dipole:2.15, canted:2, qfh:4, patch:6, iso:0};
+function scGain(type){ return SC_GAINS[type]??0; }
+function helixGain(turns,spacing,circ,freqMHz){
+  const wl=299.8/freqMHz;
+  return 10*Math.log10(15*circ*circ*turns*spacing);
+}
+function yagiBoomLookup(boom){
+  // Lookup table from spreadsheet
+  const tbl=[[0.35,9.65],[0.55,10.86],[0.8,11.85],[1.15,12.45],[1.45,13.35],[2.0,14.1],[3.2,15.8],[4.0,16.5],[6.0,17.5],[8.0,18.0],[12.0,18.8]];
+  if(boom<tbl[0][0]) return tbl[0][1];
+  for(let i=1;i<tbl.length;i++){
+    if(boom<=tbl[i][0]){
+      const f=(boom-tbl[i-1][0])/(tbl[i][0]-tbl[i-1][0]);
+      return tbl[i-1][1]+(tbl[i][1]-tbl[i-1][1])*f;
+    }
+  }
+  return tbl[tbl.length-1][1];
+}
+function parabolicGain(diam,eff,freqMHz){
+  return 20.4+20*Math.log10(diam)+20*Math.log10(freqMHz/1000)+10*Math.log10(eff);
+}
+function pointLoss_gs(theta_deg){
+  // Approx pointing loss for ground station beam
+  if(theta_deg===0) return 0;
+  const t=theta_deg*Math.PI/180;
+  const v=-10*Math.log10(3282.81*(Math.pow(Math.sin(t),2)/(t*t)));
+  return isFinite(v)?v:0;
+}
+function pointLoss_sc(type, theta_deg){
+  const t=theta_deg;
+  switch(type){
+    case 'monopole': return t<100?-10*Math.log10(Math.cos((90-t)*Math.PI/180)):100;
+    case 'dipole': return t<90?-10*Math.log10(Math.cos(t*Math.PI/180)):50;
+    case 'canted': return 0.00075*t*t;
+    case 'qfh': return -1.5*(-(4-10*Math.log10(1.256*(1+Math.cos(t*Math.PI/180)))));
+    case 'patch': return -10*Math.log10(3282.81*(Math.pow(Math.sin(t*1.7724*Math.PI/180),2)/Math.pow(t*1.7724*Math.PI/180,2)));
+    default: return 0;
+  }
+}
+function polLoss(tx_dB, rx_dB, ang_deg){
+  const r1=Math.pow(10,tx_dB/10), r2=Math.pow(10,rx_dB/10);
+  const th=ang_deg*Math.PI/180;
+  const pl=0.5*(1+((1-r1*r1)*(1-r2*r2)*Math.cos(2*th)+4*r1*r2)/((1+r1*r1)*(1+r2*r2)));
+  return isFinite(pl)&&pl>0?-10*Math.log10(pl):0;
+}
+function fsl(distKm, freqMHz){
+  const lambdaM=299.8/freqMHz;
+  const distM=distKm*1000;
+  return 22+20*Math.log10(distM/lambdaM);
+}
+function calcTs(la,lb,lc,lossPerM,bpf,other,conn,Ta,To,Tlna,Glna_dB,T2nd){
+  const totalLen=la+lb+lc;
+  const cableLoss=totalLen*lossPerM;
+  const connLoss=conn*0.05;
+  const totalLineLoss=cableLoss+bpf+other+connLoss;
+  const a=Math.pow(10,-totalLineLoss/10);
+  const Glna=Math.pow(10,Glna_dB/10);
+  const Ts=a*Ta+(1-a)*To+Tlna+T2nd/Glna;
+  return {totalLineLoss,a,Glna,Ts};
+}
+
+// ── COMPUTE ENGINE ──
+function compute(){
+  // === TRANSMITTERS ===
+  const upW=gv('up-pwr-w');
+  const upDbw=10*Math.log10(upW);
+  sv('up-pwr-dbw',upDbw); sv('up-pwr-dbm',upDbw+30);
+  const upLen=gv('up-la')+gv('up-lb')+gv('up-lc');
+  const upCableLoss=upLen*gv('up-loss-m');
+  const upConnLoss=gv('up-conn')*0.05;
+  const upTotalLoss=upCableLoss+upConnLoss+gv('up-filt')+gv('up-other')+gv('up-vswr');
+  const upAntPwr=upDbw-upTotalLoss;
+  st('up-r-len',fmt(upLen)+' m'); st('up-r-cable',fmt(upCableLoss)+' dB');
+  st('up-r-conn',fmt(upConnLoss)+' dB'); st('up-r-filt',fmt(gv('up-filt'))+' dB');
+  st('up-r-other',fmt(gv('up-other'))+' dB'); st('up-r-vswr',fmt(gv('up-vswr'))+' dB');
+  st('up-r-total',fmt(upTotalLoss)+' dB'); st('up-r-ant',fmt(upAntPwr)+' dBW');
+
+  const dnW=gv('dn-pwr-w');
+  const dnDbw=10*Math.log10(dnW);
+  sv('dn-pwr-dbw',dnDbw); sv('dn-pwr-dbm',dnDbw+30);
+  const dnLen=gv('dn-la')+gv('dn-lb')+gv('dn-lc');
+  const dnCableLoss=dnLen*gv('dn-loss-m');
+  const dnConnLoss=gv('dn-conn')*0.05;
+  const dnTotalLoss=dnCableLoss+dnConnLoss+gv('dn-filt')+gv('dn-other')+gv('dn-vswr');
+  const dnAntPwr=dnDbw-dnTotalLoss;
+  st('dn-r-len',fmt(dnLen)+' m'); st('dn-r-cable',fmt(dnCableLoss)+' dB');
+  st('dn-r-conn',fmt(dnConnLoss)+' dB'); st('dn-r-filt',fmt(gv('dn-filt'))+' dB');
+  st('dn-r-other',fmt(gv('dn-other'))+' dB'); st('dn-r-vswr',fmt(gv('dn-vswr'))+' dB');
+  st('dn-r-total',fmt(dnTotalLoss)+' dB'); st('dn-r-ant',fmt(dnAntPwr)+' dBW');
+
+  // === RECEIVERS ===
+  const rxup=calcTs(gv('rxup-la'),gv('rxup-lb'),gv('rxup-lc'),gv('rxup-loss-m'),gv('rxup-bpf'),gv('rxup-other'),gv('rxup-conn'),gv('rxup-Ta'),gv('rxup-To'),gv('rxup-Tlna'),gv('rxup-Glna'),gv('rxup-T2nd'));
+  st('rxup-r-len',fmt(gv('rxup-la')+gv('rxup-lb')+gv('rxup-lc'))+' m');
+  st('rxup-r-lineloss',fmt(rxup.totalLineLoss)+' dB');
+  st('rxup-r-a',fmt(rxup.a,4));
+  st('rxup-r-Glin',fmt(rxup.Glna,1));
+  st('rxup-r-Ts',fmtK(rxup.Ts)); st('rxup-r-Ts2',fmtK(rxup.Ts));
+
+  const rxdn=calcTs(gv('rxdn-la'),gv('rxdn-lb'),gv('rxdn-lc'),gv('rxdn-loss-m'),gv('rxdn-bpf'),gv('rxdn-other'),gv('rxdn-conn'),gv('rxdn-Ta'),gv('rxdn-To'),gv('rxdn-Tlna'),gv('rxdn-Glna'),gv('rxdn-T2nd'));
+  st('rxdn-r-lineloss',fmt(rxdn.totalLineLoss)+' dB');
+  st('rxdn-r-a',fmt(rxdn.a,4));
+  st('rxdn-r-Glin',fmt(rxdn.Glna,1));
+  st('rxdn-r-Ts',fmtK(rxdn.Ts)); st('rxdn-r-Ts2',fmtK(rxdn.Ts));
+
+  // === ANTENNA ===
+  // Uplink: GS TX
+  const upFreq=gv('ant-up-freq');
+  const upAntType=document.getElementById('ant-up-type')?.value||'helix';
+  let upGain;
+  if(upAntType==='helix') upGain=helixGain(gv('ant-up-hturns'),gv('ant-up-hspacing'),gv('ant-up-hcirc'),upFreq);
+  else if(upAntType==='yagi') upGain=yagiBoomLookup(gv('ant-up-yboom'));
+  else if(upAntType==='parabolic') upGain=parabolicGain(gv('ant-up-pdiam'),gv('ant-up-peff'),upFreq);
+  else upGain=gv('ant-up-ugain');
+  sv('ant-up-gain',upGain);
+  const upPointLoss=pointLoss_gs(gv('ant-up-point'));
+  sv('ant-up-ploss',upPointLoss);
+
+  // Show/hide param sections
+  ['helix','yagi','para','user'].forEach(t=>{
+    const el=document.getElementById(`ant-up-${t}-params`);
+    if(el) el.style.display=(upAntType===t||(t==='helix'&&upAntType==='helix'))?'block':'none';
+  });
+
+  // Uplink: SC RX
+  const scType=document.getElementById('ant-sc-type')?.value||'monopole';
+  const scGainVal=scGain(scType);
+  sv('ant-sc-gain',scGainVal);
+  const scAngle=gv('ant-sc-angle');
+  const scPointLoss=pointLoss_sc(scType,scAngle);
+  sv('ant-sc-ploss',isFinite(scPointLoss)?scPointLoss:0);
+
+  // Pol uplink
+  const polUpLoss=polLoss(gv('pol-up-tx'),gv('pol-up-rx'),gv('pol-up-ang'));
+  sv('pol-up-loss',polUpLoss);
+
+  // Downlink: SC TX
+  const dnFreq=gv('ant-dn-freq');
+  const dnScType=document.getElementById('ant-dn-type')?.value||'canted';
+  const dnScGainVal=scGain(dnScType);
+  sv('ant-dn-sc-gain',dnScGainVal);
+  const dnScAngle=gv('ant-dn-sc-angle');
+  const dnScPointLoss=pointLoss_sc(dnScType,dnScAngle);
+  sv('ant-dn-sc-ploss',isFinite(dnScPointLoss)?dnScPointLoss:0);
+
+  // Downlink: GS RX
+  const gsDnType=document.getElementById('ant-gs-dn-type')?.value||'helix';
+  let gsDnGain;
+  if(gsDnType==='helix') gsDnGain=helixGain(gv('ant-gs-hturns'),gv('ant-gs-hspacing'),gv('ant-gs-hcirc'),dnFreq);
+  else if(gsDnType==='yagi') gsDnGain=yagiBoomLookup(gv('ant-gs-yboom'));
+  else if(gsDnType==='parabolic') gsDnGain=parabolicGain(gv('ant-gs-pdiam'),gv('ant-gs-peff'),dnFreq);
+  else gsDnGain=gv('ant-gs-ugain');
+  sv('ant-gs-dn-gain',gsDnGain);
+  const gsDnPointLoss=pointLoss_gs(gv('ant-gs-dn-point'));
+  sv('ant-gs-dn-ploss',gsDnPointLoss);
+
+  ['helix','yagi','para','user'].forEach(t=>{
+    const el=document.getElementById(`ant-gs-${t}-params`);
+    if(el) el.style.display=gsDnType===t?'block':'none';
+  });
+
+  const polDnLoss=polLoss(gv('pol-dn-tx'),gv('pol-dn-rx'),gv('pol-dn-ang'));
+  sv('pol-dn-loss',polDnLoss);
+
+  // === PATH LOSSES ===
+  const range=gv('path-range');
+  const elev=gv('path-elev');
+  const upFsl=fsl(range,upFreq);
+  const dnFsl=fsl(range,dnFreq);
+  const atmLoss=atmosLoss(elev);
+  const upIonLoss=ionosLoss(upFreq);
+  const dnIonLoss=ionosLoss(dnFreq);
+  const upRain=gv('path-rain-up');
+  const dnRain=gv('path-rain-dn');
+  const upTotalPath=upFsl+atmLoss+upIonLoss+upRain;
+  const dnTotalPath=dnFsl+atmLoss+dnIonLoss+dnRain;
+  st('pl-up-freq-lbl',upFreq.toFixed(1)); st('pl-dn-freq-lbl',dnFreq.toFixed(1));
+  st('pl-up-fsl',fmtdB(upFsl)); st('pl-up-atm',fmtdB(atmLoss));
+  st('pl-up-ion',fmtdB(upIonLoss)); st('pl-up-rain',fmtdB(upRain));
+  st('pl-up-total',fmtdB(upTotalPath));
+  st('pl-dn-fsl',fmtdB(dnFsl)); st('pl-dn-atm',fmtdB(atmLoss));
+  st('pl-dn-ion',fmtdB(dnIonLoss)); st('pl-dn-rain',fmtdB(dnRain));
+  st('pl-dn-total',fmtdB(dnTotalPath));
+
+  // === MODULATION ===
+  const upMod=MOD_OPTIONS[selModUp];
+  const dnMod=MOD_OPTIONS_DL[selModDn];
+  const upImplLoss=gv('mod-up-impl');
+  const dnImplLoss=gv('mod-dn-impl');
+  const upEbnoThresh=upMod.ebno+upImplLoss;
+  const dnEbnoThresh=dnMod.ebno+dnImplLoss;
+  st('mod-up-threshold',fmt(upEbnoThresh)+' dB');
+  st('mod-dn-threshold',fmt(dnEbnoThresh)+' dB');
+
+  // === UPLINK BUDGET ===
+  const k=-228.6; // Boltzmann dBW/K/Hz
+  const ulEirp=upDbw-upTotalLoss+upGain;
+  const ulIso=ulEirp-upPointLoss-polUpLoss-upFsl-atmLoss-upIonLoss-upRain;
+  const ulGT=scGainVal-rxup.totalLineLoss-10*Math.log10(rxup.Ts);
+  const ulSno=ulIso-scPointLoss-(-228.6)+ulGT; // simplified: S/No = Piso + G/T - k
+  const ulDr=gv('ul-datarate');
+  const ulDrDb=10*Math.log10(ulDr);
+  const ulEbno=ulSno-ulDrDb;
+  const ulMargin=ulEbno-upEbnoThresh;
+
+  st('ul-b-pwr',fmtDbw(upDbw));
+  st('ul-b-txloss',fmt(-upTotalLoss)+' dB');
+  st('ul-b-txgain',fmt(upGain)+' dBi');
+  st('ul-b-eirp',fmtDbw(ulEirp));
+  st('ul-b-ptloss-gs',fmt(-upPointLoss)+' dB');
+  st('ul-b-polloss',fmt(-polUpLoss)+' dB');
+  st('ul-b-fsl',fmt(-upFsl)+' dB');
+  st('ul-b-atm',fmt(-atmLoss)+' dB');
+  st('ul-b-ion',fmt(-upIonLoss)+' dB');
+  st('ul-b-rain',fmt(-upRain)+' dB');
+  st('ul-b-iso',fmtDbw(ulIso));
+  st('ul-b-ptloss-sc',fmt(-scPointLoss)+' dB');
+  st('ul-b-scgain',fmt(scGainVal)+' dBi');
+  st('ul-b-rxloss',fmt(-rxup.totalLineLoss)+' dB');
+  st('ul-b-ts',fmtK(rxup.Ts));
+  st('ul-b-gt',fmtDbk(ulGT));
+  st('ul-b-sno',fmtDbhz(ulSno));
+  st('ul-b-dr',fmtDbhz(ulDrDb));
+  st('ul-b-ebno',fmt(ulEbno)+' dB');
+  st('ul-b-req',fmt(upEbnoThresh)+' dB');
+  st('ul-b-margin',fmt(ulMargin)+' dB');
+  const ulBox=document.getElementById('ul-margin-box');
+  const ulLbl=document.getElementById('ul-margin-lbl');
+  if(ulBox&&ulLbl){
+    ulBox.className='result-box '+(ulMargin>=3?'good':ulMargin>=0?'warn':'danger');
+    ulLbl.textContent=ulMargin>=3?'Link Margin ✓':ulMargin>=0?'Link Margin — Marginal':'Link Margin ✗ INSUFFICIENT';
+  }
+
+  // === DOWNLINK BUDGET ===
+  const dlEirp=dnDbw-dnTotalLoss+dnScGainVal;
+  const dlIso=dlEirp-dnScPointLoss-polDnLoss-dnFsl-atmLoss-dnIonLoss-dnRain;
+  const dlGT=gsDnGain-rxdn.totalLineLoss-10*Math.log10(rxdn.Ts);
+  const dlSno=dlIso-gsDnPointLoss-(-228.6)+dlGT;
+  const dlDr=gv('dl-datarate');
+  const dlDrDb=10*Math.log10(dlDr);
+  const dlEbno=dlSno-dlDrDb;
+  const dlMargin=dlEbno-dnEbnoThresh;
+
+  st('dl-b-pwr',fmtDbw(dnDbw));
+  st('dl-b-txloss',fmt(-dnTotalLoss)+' dB');
+  st('dl-b-txgain',fmt(dnScGainVal)+' dBi');
+  st('dl-b-eirp',fmtDbw(dlEirp));
+  st('dl-b-ptloss-sc',fmt(-dnScPointLoss)+' dB');
+  st('dl-b-polloss',fmt(-polDnLoss)+' dB');
+  st('dl-b-fsl',fmt(-dnFsl)+' dB');
+  st('dl-b-atm',fmt(-atmLoss)+' dB');
+  st('dl-b-ion',fmt(-dnIonLoss)+' dB');
+  st('dl-b-rain',fmt(-dnRain)+' dB');
+  st('dl-b-iso',fmtDbw(dlIso));
+  st('dl-b-ptloss-gs',fmt(-gsDnPointLoss)+' dB');
+  st('dl-b-gsgain',fmt(gsDnGain)+' dBi');
+  st('dl-b-rxloss',fmt(-rxdn.totalLineLoss)+' dB');
+  st('dl-b-ts',fmtK(rxdn.Ts));
+  st('dl-b-gt',fmtDbk(dlGT));
+  st('dl-b-sno',fmtDbhz(dlSno));
+  st('dl-b-dr',fmtDbhz(dlDrDb));
+  st('dl-b-ebno',fmt(dlEbno)+' dB');
+  st('dl-b-req',fmt(dnEbnoThresh)+' dB');
+  st('dl-b-margin',fmt(dlMargin)+' dB');
+  const dlBox=document.getElementById('dl-margin-box');
+  const dlLbl=document.getElementById('dl-margin-lbl');
+  if(dlBox&&dlLbl){
+    dlBox.className='result-box '+(dlMargin>=3?'good':dlMargin>=0?'warn':'danger');
+    dlLbl.textContent=dlMargin>=3?'Link Margin ✓':dlMargin>=0?'Link Margin — Marginal':'Link Margin ✗ INSUFFICIENT';
+  }
+
+  // === OVERVIEW ===
+  st('ov-uplink-margin',fmt(ulMargin));
+  st('ov-downlink-margin',fmt(dlMargin));
+  st('ov-uplink-eirp',fmt(ulEirp));
+  st('ov-downlink-eirp',fmt(dlEirp));
+  updateOverviewChains(ulEirp,upTotalLoss,upGain,ulIso,scGainVal,ulEbno,dlEirp,dnTotalLoss,dnScGainVal,dlIso,gsDnGain,dlEbno);
+  updateSummary(ulMargin,dlMargin,rxup.Ts,rxdn.Ts,ulGT,dlGT);
+}
+
+function chainNode(lbl,val,unit,hl=false){
+  return `<div class="chain-node${hl?' highlight':''}">`+
+    `<div class="node-lbl">${lbl}</div>`+
+    `<div class="node-val">${val}</div>`+
+    `<div class="node-unit">${unit}</div></div>`;
+}
+function chainArr(){ return '<div class="chain-arrow">→</div>'; }
+
+function updateOverviewChains(ulEirp,upTxLoss,upGain,ulIso,scGain,ulEbno,dlEirp,dnTxLoss,dnScGain,dlIso,gsGain,dlEbno){
+  const up=document.getElementById('ov-chain-up');
+  if(up) up.innerHTML=
+    chainNode('Ground Station (GS) Transmitter (TX) Power',fmt(gv('up-pwr-w')),'W')+chainArr()+
+    chainNode('Transmitter (TX) Line Loss',fmt(-(gv('up-la')+gv('up-lb')+gv('up-lc'))*gv('up-loss-m')-gv('up-conn')*0.05-gv('up-filt')-gv('up-other')-gv('up-vswr')),'dB')+chainArr()+
+    chainNode('Ground Station (GS) Antenna Gain',fmt(upGain),'dBi')+chainArr()+
+    chainNode('EIRP',fmt(ulEirp),'dBW',true)+chainArr()+
+    chainNode('Prop. Loss','−'+fmt(gv('path-range')),'km')+chainArr()+
+    chainNode('Iso @ S/C',fmt(ulIso),'dBW')+chainArr()+
+    chainNode('S/C Ant',fmt(scGain),'dBi')+chainArr()+
+    chainNode('Eb/No',fmt(ulEbno),'dB',true);
+
+  const dn=document.getElementById('ov-chain-dn');
+  if(dn) dn.innerHTML=
+    chainNode('S/C TX Pwr',fmt(gv('dn-pwr-w')),'W')+chainArr()+
+    chainNode('Transmitter (TX) Line Loss',fmt(-(gv('dn-la')+gv('dn-lb')+gv('dn-lc'))*gv('dn-loss-m')-gv('dn-conn')*0.05-gv('dn-filt')-gv('dn-other')-gv('dn-vswr')),'dB')+chainArr()+
+    chainNode('S/C Ant',fmt(dnScGain),'dBi')+chainArr()+
+    chainNode('EIRP',fmt(dlEirp),'dBW',true)+chainArr()+
+    chainNode('Prop. Loss','−'+fmt(gv('path-range')),'km')+chainArr()+
+    chainNode('Iso @ GS',fmt(dlIso),'dBW')+chainArr()+
+    chainNode('GS Ant',fmt(gsGain),'dBi')+chainArr()+
+    chainNode('Eb/No',fmt(dlEbno),'dB',true);
+}
+
+function updateSummary(ulM,dlM,tsUp,tsDn,ulGT,dlGT){
+  const s=document.getElementById('ov-summary');
+  if(!s) return;
+  const marginClass=(m)=>m>=3?'ok':m>=0?'warn':'fail';
+  s.innerHTML=
+    `<div class="summary-card ${marginClass(ulM)}"><div class="s-lbl">Uplink Margin</div><div class="s-val">${fmt(ulM)}<span class="s-unit">dB</span></div></div>`+
+    `<div class="summary-card ${marginClass(dlM)}"><div class="s-lbl">Downlink Margin</div><div class="s-val">${fmt(dlM)}<span class="s-unit">dB</span></div></div>`+
+    `<div class="summary-card neutral"><div class="s-lbl">Spacecraft (S/C) System Noise Temp</div><div class="s-val">${fmt(tsUp,0)}<span class="s-unit">K</span></div></div>`+
+    `<div class="summary-card neutral"><div class="s-lbl">Ground Station (GS) System Noise Temp</div><div class="s-val">${fmt(tsDn,0)}<span class="s-unit">K</span></div></div>`+
+    `<div class="summary-card neutral"><div class="s-lbl">S/C Figure of Merit — G/T</div><div class="s-val">${fmt(ulGT)}<span class="s-unit">dB/K</span></div></div>`+
+    `<div class="summary-card neutral"><div class="s-lbl">GS Figure of Merit — G/T</div><div class="s-val">${fmt(dlGT)}<span class="s-unit">dB/K</span></div></div>`;
+}
+
+// ── MOD TABLES ──
+function buildModTable(tbodyId, options, selectedIdx, prefix){
+  const tbody=document.getElementById(tbodyId);
+  if(!tbody) return;
+  tbody.innerHTML='';
+  options.forEach((o,i)=>{
+    const tr=document.createElement('tr');
+    if(i===selectedIdx) tr.classList.add('selected');
+    tr.innerHTML=`<td>${i+1}</td><td>${o.mod}</td><td>${o.code}</td><td class="mono-val">${o.ber.toExponential(0)}</td><td class="mono-val">${o.ebno}</td>`;
+    tr.onclick=()=>{
+      if(prefix==='up') selModUp=i;
+      else selModDn=i;
+      buildModTable(tbodyId,options,i,prefix);
+      compute();
+    };
+    tbody.appendChild(tr);
+  });
+}
+
+// ── NAV ──
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── SUB TABS ──
+function switchSub(group, which, btn){
+  const panels=['up','dn'];
+  panels.forEach(p=>{
+    const el=document.getElementById(`${group}-${p}`);
+    if(el) el.style.display=p===which?'block':'none';
+  });
+  btn.closest('.sub-tabs').querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Antenna type change helpers
+document.addEventListener('change', e=>{
+  if(e.target.id==='ant-up-type'){
+    ['helix','yagi','para','user'].forEach(t=>{
+      const el=document.getElementById(`ant-up-${t}-params`);
+      if(el) el.style.display=e.target.value===t?'block':'none';
+    });
+  }
+  if(e.target.id==='ant-gs-dn-type'){
+    ['helix','yagi','para','user'].forEach(t=>{
+      const el=document.getElementById(`ant-gs-${t}-params`);
+      if(el) el.style.display=e.target.value===t?'block':'none';
+    });
+  }
+});
+
+// ── INIT ──
+buildModTable('mod-up-tbody', MOD_OPTIONS, selModUp, 'up');
+buildModTable('mod-dn-tbody', MOD_OPTIONS_DL, selModDn, 'dn');
+compute();
+
+// ═══════════════════════════════════════════════════════
+// INTERACTIVE SETUP DIAGRAM ENGINE
+// ═══════════════════════════════════════════════════════
+
+// Each node definition: id, label, icon char, x center, color key
+// Colors: 'acc'=accent(teal), 'warn'=amber, 'blue'=blue, 'red'=danger
+const UP_NODES = [
+  {id:'gstx',  label:'GS Transmitter',    icon:'TX', cx:60,  color:'acc'},
+  {id:'gstxl', label:'TX Feed Line',       icon:'~',  cx:195, color:'blue'},
+  {id:'gsant', label:'GS Antenna',         icon:'◎',  cx:330, color:'acc'},
+  {id:'path',  label:'Propagation Path',   icon:'↗',  cx:490, color:'warn'},
+  {id:'scant', label:'S/C Antenna',        icon:'◎',  cx:650, color:'warn'},
+  {id:'scrxl', label:'S/C RX Feed Line',   icon:'~',  cx:775, color:'blue'},
+  {id:'scrx',  label:'S/C Receiver',       icon:'RX', cx:890, color:'acc'},
+];
+const DN_NODES = [
+  {id:'sctx',  label:'S/C Transmitter',   icon:'TX', cx:60,  color:'warn'},
+  {id:'sctxl', label:'S/C TX Feed Line',  icon:'~',  cx:195, color:'blue'},
+  {id:'scant2',label:'S/C Antenna',       icon:'◎',  cx:330, color:'warn'},
+  {id:'path2', label:'Propagation Path',  icon:'↘',  cx:490, color:'acc'},
+  {id:'gsant2',label:'GS Antenna',        icon:'◎',  cx:650, color:'acc'},
+  {id:'gsrxl', label:'GS RX Feed Line',   icon:'~',  cx:775, color:'blue'},
+  {id:'gsrx',  label:'GS Receiver',       icon:'RX', cx:890, color:'acc'},
+];
+
+const COLORS = {
+  acc:  {fill:'rgba(0,212,170,0.15)',  stroke:'#00d4aa', text:'#00d4aa',  dark:'#00a884'},
+  warn: {fill:'rgba(240,180,41,0.15)', stroke:'#f0b429', text:'#f0b429',  dark:'#c49020'},
+  blue: {fill:'rgba(88,166,255,0.12)', stroke:'#58a6ff', text:'#58a6ff',  dark:'#3a7fd4'},
+  red:  {fill:'rgba(248,81,73,0.15)',  stroke:'#f85149', text:'#f85149',  dark:'#d43028'},
+};
+
+let openNode = null; // currently expanded node id
+
+// Node controls definition: which input IDs map to each node
+const NODE_CONTROLS = {
+  // Uplink nodes
+  gstx:  { title:'Ground Station (GS) Transmitter Power',
+            sliders:[
+              {label:'TX Power',  id:'up-pwr-w',   min:0.1,  max:100,  step:0.1, unit:'W',   fmt:v=>v.toFixed(1)},
+            ]},
+  gstxl: { title:'GS Transmitter (TX) Feed Line',
+            sliders:[
+              {label:'Line A',    id:'up-la',      min:0,    max:50,   step:0.1, unit:'m',   fmt:v=>v.toFixed(1)},
+              {label:'Line B',    id:'up-lb',      min:0,    max:10,   step:0.1, unit:'m',   fmt:v=>v.toFixed(1)},
+              {label:'Line C',    id:'up-lc',      min:0,    max:50,   step:0.5, unit:'m',   fmt:v=>v.toFixed(1)},
+              {label:'Loss/m',    id:'up-loss-m',  min:0.01, max:1,    step:0.01,unit:'dB/m',fmt:v=>v.toFixed(2)},
+              {label:'Connectors',id:'up-conn',    min:0,    max:20,   step:1,   unit:'#',   fmt:v=>v.toFixed(0)},
+              {label:'Filter IL', id:'up-filt',    min:0,    max:5,    step:0.1, unit:'dB',  fmt:v=>v.toFixed(1)},
+              {label:'Other IL',  id:'up-other',   min:0,    max:5,    step:0.1, unit:'dB',  fmt:v=>v.toFixed(1)},
+              {label:'VSWR Loss', id:'up-vswr',    min:0,    max:3,    step:0.01,unit:'dB',  fmt:v=>v.toFixed(2)},
+            ]},
+  gsant: { title:'GS TX Antenna',
+            sliders:[
+              {label:'Frequency', id:'ant-up-freq',min:50,   max:3000, step:0.1, unit:'MHz', fmt:v=>v.toFixed(1)},
+              {label:'Turns (n)', id:'ant-up-hturns',min:1,  max:30,   step:0.5, unit:'',    fmt:v=>v.toFixed(1)},
+              {label:'Pointing θ',id:'ant-up-point',min:0,   max:30,   step:0.5, unit:'°',   fmt:v=>v.toFixed(1)},
+            ]},
+  path:  { title:'Propagation Path',
+            sliders:[
+              {label:'Slant Range',id:'path-range',min:100, max:5000, step:10,  unit:'km',  fmt:v=>v.toFixed(0)},
+              {label:'Elev. Angle',id:'path-elev', min:0,   max:90,   step:1,   unit:'°',   fmt:v=>v.toFixed(0)},
+              {label:'Rain Loss',  id:'path-rain-up',min:0, max:10,   step:0.1, unit:'dB',  fmt:v=>v.toFixed(1)},
+            ]},
+  scant: { title:'S/C Receiver (RX) Antenna',
+            sliders:[
+              {label:'Off-Axis θ2',id:'ant-sc-angle',min:0, max:90,   step:1,   unit:'°',   fmt:v=>v.toFixed(0)},
+            ]},
+  scrxl: { title:'S/C Receiver (RX) Feed Line',
+            sliders:[
+              {label:'Line A',    id:'rxup-la',    min:0,    max:2,    step:0.01,unit:'m',   fmt:v=>v.toFixed(2)},
+              {label:'Line B',    id:'rxup-lb',    min:0,    max:2,    step:0.01,unit:'m',   fmt:v=>v.toFixed(2)},
+              {label:'BPF IL',    id:'rxup-bpf',   min:0,    max:5,    step:0.1, unit:'dB',  fmt:v=>v.toFixed(1)},
+            ]},
+  scrx:  { title:'S/C Receiver Noise',
+            sliders:[
+              {label:'LNA Temp',  id:'rxup-Tlna',  min:20,   max:500,  step:5,   unit:'K',   fmt:v=>v.toFixed(0)},
+              {label:'LNA Gain',  id:'rxup-Glna',  min:5,    max:40,   step:0.5, unit:'dB',  fmt:v=>v.toFixed(1)},
+              {label:'Sky Temp',  id:'rxup-Ta',    min:10,   max:300,  step:5,   unit:'K',   fmt:v=>v.toFixed(0)},
+            ]},
+  // Downlink nodes
+  sctx:  { title:'Spacecraft (S/C) Transmitter Power',
+            sliders:[
+              {label:'TX Power',  id:'dn-pwr-w',   min:0.01, max:20,   step:0.05,unit:'W',   fmt:v=>v.toFixed(2)},
+            ]},
+  sctxl: { title:'S/C Transmitter (TX) Feed Line',
+            sliders:[
+              {label:'Line A',    id:'dn-la',      min:0,    max:1,    step:0.005,unit:'m',  fmt:v=>v.toFixed(3)},
+              {label:'Line B',    id:'dn-lb',      min:0,    max:1,    step:0.005,unit:'m',  fmt:v=>v.toFixed(3)},
+              {label:'Line C',    id:'dn-lc',      min:0,    max:2,    step:0.05, unit:'m',  fmt:v=>v.toFixed(2)},
+              {label:'Loss/m',    id:'dn-loss-m',  min:0.01, max:2,    step:0.01, unit:'dB/m',fmt:v=>v.toFixed(2)},
+              {label:'Connectors',id:'dn-conn',    min:0,    max:12,   step:1,    unit:'#',  fmt:v=>v.toFixed(0)},
+              {label:'Filter IL', id:'dn-filt',    min:0,    max:5,    step:0.1,  unit:'dB', fmt:v=>v.toFixed(1)},
+              {label:'VSWR Loss', id:'dn-vswr',    min:0,    max:2,    step:0.01, unit:'dB', fmt:v=>v.toFixed(2)},
+            ]},
+  scant2:{ title:'S/C TX Antenna (Downlink)',
+            sliders:[
+              {label:'Frequency', id:'ant-dn-freq',min:50,   max:3000, step:0.1, unit:'MHz', fmt:v=>v.toFixed(1)},
+              {label:'Off-Axis θ',id:'ant-dn-sc-angle',min:0,max:90,  step:1,   unit:'°',   fmt:v=>v.toFixed(0)},
+            ]},
+  path2: { title:'Propagation Path (shared)',
+            sliders:[
+              {label:'Slant Range',id:'path-range',min:100, max:5000, step:10,  unit:'km',  fmt:v=>v.toFixed(0)},
+              {label:'Elev. Angle',id:'path-elev', min:0,   max:90,   step:1,   unit:'°',   fmt:v=>v.toFixed(0)},
+              {label:'Rain Loss',  id:'path-rain-dn',min:0, max:10,   step:0.1, unit:'dB',  fmt:v=>v.toFixed(1)},
+            ]},
+  gsant2:{ title:'GS RX Antenna (Downlink)',
+            sliders:[
+              {label:'Turns (n)', id:'ant-gs-hturns',min:1, max:30,   step:0.5, unit:'',    fmt:v=>v.toFixed(1)},
+              {label:'Pointing θ',id:'ant-gs-dn-point',min:0,max:30,  step:0.5, unit:'°',   fmt:v=>v.toFixed(1)},
+            ]},
+  gsrxl: { title:'GS Receiver (RX) Feed Line',
+            sliders:[
+              {label:'Line A',    id:'rxdn-la',    min:0,    max:5,    step:0.1, unit:'m',   fmt:v=>v.toFixed(1)},
+              {label:'BPF IL',    id:'rxdn-bpf',   min:0,    max:5,    step:0.1, unit:'dB',  fmt:v=>v.toFixed(1)},
+            ]},
+  gsrx:  { title:'GS Receiver Noise',
+            sliders:[
+              {label:'LNA Temp',  id:'rxdn-Tlna',  min:20,   max:500,  step:5,   unit:'K',   fmt:v=>v.toFixed(0)},
+              {label:'LNA Gain',  id:'rxdn-Glna',  min:5,    max:40,   step:0.5, unit:'dB',  fmt:v=>v.toFixed(1)},
+              {label:'Sky Temp',  id:'rxdn-Ta',    min:10,   max:300,  step:5,   unit:'K',   fmt:v=>v.toFixed(0)},
+            ]},
+};
+
+// ── SVG RENDERING ──
+function svgNS(tag, attrs){
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function renderDiagram(svgId, nodes, panelContainerId, isUplink){
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  svg.innerHTML = '';
+  const W = 920, H = 160;
+  const nodeW = 108, nodeH = 80, cy = H/2;
+
+  // Draw connecting lines first
+  for(let i=0;i<nodes.length-1;i++){
+    const n1=nodes[i], n2=nodes[i+1];
+    const x1=n1.cx+nodeW/2, x2=n2.cx-nodeW/2;
+    const mid=(x1+x2)/2;
+    const line=svgNS('path',{
+      d:`M${x1},${cy} C${mid},${cy} ${mid},${cy} ${x2},${cy}`,
+      stroke: isUplink ? '#00d4aa' : '#f0b429',
+      'stroke-width':'2', fill:'none', opacity:'0.3'
+    });
+    svg.appendChild(line);
+    // Arrow head
+    const arr=svgNS('polygon',{
+      points:`${x2},${cy} ${x2-8},${cy-4} ${x2-8},${cy+4}`,
+      fill: isUplink ? '#00d4aa' : '#f0b429', opacity:'0.5'
+    });
+    svg.appendChild(arr);
+  }
+
+  // Draw nodes
+  nodes.forEach(node=>{
+    const col = COLORS[node.color];
+    const isOpen = openNode===node.id;
+    const x = node.cx - nodeW/2;
+    const y = cy - nodeH/2;
+
+    const g = svgNS('g', {
+      transform:`translate(${x},${y})`,
+      style:'cursor:pointer',
+      'data-nodeid': node.id,
+    });
+
+    // Box
+    const rect = svgNS('rect', {
+      x:0, y:0, width:nodeW, height:nodeH,
+      rx:8, fill: isOpen ? col.fill.replace('0.15','0.3') : col.fill,
+      stroke: col.stroke, 'stroke-width': isOpen?'2':'1.5',
+    });
+    g.appendChild(rect);
+
+    // Icon
+    const iconEl = svgNS('text', {
+      x: nodeW/2, y: 28,
+      'text-anchor':'middle', 'dominant-baseline':'middle',
+      fill: col.text, 'font-size':'16', 'font-family':'monospace', 'font-weight':'700'
+    });
+    iconEl.textContent = node.icon;
+    g.appendChild(iconEl);
+
+    // Label (two lines if needed)
+    const words = node.label.split(' ');
+    const half = Math.ceil(words.length/2);
+    const line1 = words.slice(0,half).join(' ');
+    const line2 = words.slice(half).join(' ');
+    const lbl1 = svgNS('text',{x:nodeW/2,y:48,'text-anchor':'middle','dominant-baseline':'middle',fill:'#c9d1d9','font-size':'9.5','font-family':'Space Grotesk, sans-serif'});
+    lbl1.textContent = line1;
+    g.appendChild(lbl1);
+    if(line2){
+      const lbl2=svgNS('text',{x:nodeW/2,y:60,'text-anchor':'middle','dominant-baseline':'middle',fill:'#c9d1d9','font-size':'9.5','font-family':'Space Grotesk, sans-serif'});
+      lbl2.textContent = line2;
+      g.appendChild(lbl2);
+    }
+
+    // Live value from compute (small bottom text)
+    const valEl = svgNS('text',{x:nodeW/2,y:73,'text-anchor':'middle','dominant-baseline':'middle',fill:col.text,'font-size':'8.5','font-family':'Space Mono, monospace','font-weight':'700','data-live':node.id});
+    valEl.id = `diag-val-${node.id}`;
+    valEl.textContent = '...';
+    g.appendChild(valEl);
+
+    // Click expand indicator
+    const dot=svgNS('circle',{cx:nodeW-10,cy:10,r:4,fill:isOpen?col.stroke:'transparent',stroke:col.stroke,'stroke-width':'1.5'});
+    g.appendChild(dot);
+
+    g.addEventListener('click',()=>toggleNodePanel(node.id, panelContainerId, svgId, nodes, isUplink));
+    svg.appendChild(g);
+  });
+}
+
+// ── PANEL EXPAND/COLLAPSE ──
+function toggleNodePanel(nodeId, containerId, svgId, nodes, isUplink){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  if(openNode === nodeId){
+    openNode = null;
+    container.innerHTML = '';
+    renderDiagram(svgId, nodes, containerId, isUplink);
+    return;
+  }
+  openNode = nodeId;
+  renderDiagram(svgId, nodes, containerId, isUplink);
+  const ctrl = NODE_CONTROLS[nodeId];
+  if(!ctrl) return;
+
+  const col = COLORS[nodes.find(n=>n.id===nodeId).color];
+  let html = `<div style="background:${col.fill};border:1px solid ${col.stroke};border-radius:var(--radius);padding:1rem;margin-top:4px">`;
+  html += `<p style="font-size:11px;color:${col.text};font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">${ctrl.title}</p>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">`;
+
+  ctrl.sliders.forEach(s=>{
+    const inputEl = document.getElementById(s.id);
+    const curVal = inputEl ? parseFloat(inputEl.value) || s.min : s.min;
+    const pct = ((curVal - s.min)/(s.max - s.min)*100).toFixed(1);
+    html += `<div class="diag-ctrl">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <label style="font-size:11px;color:${col.text};font-weight:500;text-transform:uppercase;letter-spacing:.05em">${s.label}</label>
+        <span style="font-size:12px;font-family:var(--mono);color:${col.text}" id="diag-lbl-${s.id}">${s.fmt(curVal)} ${s.unit}</span>
+      </div>
+      <input type="range"
+        min="${s.min}" max="${s.max}" step="${s.step}"
+        value="${curVal}"
+        style="width:100%;accent-color:${col.stroke}"
+        oninput="diagSlider('${s.id}',this.value,'${s.id}','${s.fmt.toString()}','${s.unit}')"
+      >
+      <div style="display:flex;justify-content:space-between;margin-top:2px">
+        <span style="font-size:9px;color:#6e7681;font-family:var(--mono)">${s.min}${s.unit}</span>
+        <span style="font-size:9px;color:#6e7681;font-family:var(--mono)">${s.max}${s.unit}</span>
+      </div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  container.innerHTML = html;
+
+  // Also sync: when the real input changes elsewhere, update slider
+  ctrl.sliders.forEach(s=>{
+    const inp = document.getElementById(s.id);
+    if(inp) inp.addEventListener('input', syncDiagSlider.bind(null, s));
+  });
+}
+
+function diagSlider(inputId, rawVal, labelBase, fmtStr, unit){
+  // Update actual input
+  const inp = document.getElementById(inputId);
+  if(inp){ inp.value = rawVal; }
+  // Update label
+  const v = parseFloat(rawVal);
+  const lbl = document.getElementById(`diag-lbl-${labelBase}`);
+  if(lbl){
+    // Build a safe formatter from the step
+    const step = parseFloat(inp?.step||'0.1');
+    const dp = step < 0.01 ? 3 : step < 0.1 ? 2 : step < 1 ? 1 : 0;
+    lbl.textContent = v.toFixed(dp) + ' ' + unit;
+  }
+  compute();
+}
+
+function syncDiagSlider(s){
+  const rangeEl = document.querySelector(`input[type=range][oninput*="${s.id}"]`);
+  if(rangeEl){
+    const inp = document.getElementById(s.id);
+    if(inp) rangeEl.value = inp.value;
+    const lbl = document.getElementById(`diag-lbl-${s.id}`);
+    if(lbl) lbl.textContent = s.fmt(parseFloat(inp?.value||s.min)) + ' ' + s.unit;
+  }
+}
+
+// ── LIVE VALUE DISPLAY ON SVG NODES ──
+// Called by compute() to push current computed values onto nodes
+function updateDiagValues(data){
+  const updates = {
+    // Uplink
+    'gstx':  data.upPwr!=null  ? `${data.upPwr.toFixed(1)} W / ${(10*Math.log10(data.upPwr)).toFixed(1)} dBW` : '—',
+    'gstxl': data.upTxLoss!=null ? `-${data.upTxLoss.toFixed(2)} dB` : '—',
+    'gsant': data.upGain!=null  ? `${data.upGain.toFixed(1)} dBi` : '—',
+    'path':  data.upFsl!=null   ? `-${data.upFsl.toFixed(1)} dB FSL` : '—',
+    'scant': data.scGainUp!=null? `${data.scGainUp.toFixed(1)} dBi` : '—',
+    'scrxl': data.rxupLineLoss!=null ? `-${data.rxupLineLoss.toFixed(2)} dB` : '—',
+    'scrx':  data.rxupTs!=null  ? `Ts=${data.rxupTs.toFixed(0)} K` : '—',
+    // Downlink
+    'sctx':  data.dnPwr!=null   ? `${data.dnPwr.toFixed(2)} W / ${(10*Math.log10(data.dnPwr)).toFixed(1)} dBW` : '—',
+    'sctxl': data.dnTxLoss!=null ? `-${data.dnTxLoss.toFixed(2)} dB` : '—',
+    'scant2':data.dnScGain!=null ? `${data.dnScGain.toFixed(1)} dBi` : '—',
+    'path2': data.dnFsl!=null   ? `-${data.dnFsl.toFixed(1)} dB FSL` : '—',
+    'gsant2':data.gsDnGain!=null ? `${data.gsDnGain.toFixed(1)} dBi` : '—',
+    'gsrxl': data.rxdnLineLoss!=null ? `-${data.rxdnLineLoss.toFixed(2)} dB` : '—',
+    'gsrx':  data.rxdnTs!=null  ? `Ts=${data.rxdnTs.toFixed(0)} K` : '—',
+  };
+  for(const [nodeId, val] of Object.entries(updates)){
+    const el = document.getElementById(`diag-val-${nodeId}`);
+    if(el) el.textContent = val;
+  }
+}
+
+// ── WATERFALL CANVAS RENDERER ──
+function drawWaterfall(canvasId, items, totalIn, color){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 400;
+  canvas.width = W;
+  canvas.height = 320;
+  ctx.clearRect(0,0,W,320);
+
+  const barH = 22, gap = 6;
+  const labelW = 200, valW = 72;
+  const barAreaW = W - labelW - valW - 16;
+  const barX = labelW + 8;
+
+  // Find range
+  let running = totalIn;
+  const vals = items.map(item=>{
+    const start = running;
+    running += item.delta;
+    return {start, end:running, ...item};
+  });
+  const allVals = vals.map(v=>[v.start,v.end]).flat().concat([totalIn, running]);
+  const minV = Math.min(...allVals);
+  const maxV = Math.max(...allVals);
+  const range = maxV - minV || 1;
+
+  function toX(v){ return barX + ((v - minV)/range)*barAreaW; }
+
+  // Background
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0,0,W,320);
+
+  // Grid lines
+  const gridCount = 5;
+  for(let i=0;i<=gridCount;i++){
+    const v = minV + (range/gridCount)*i;
+    const x = toX(v);
+    ctx.strokeStyle = '#21262d';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,320); ctx.stroke();
+    ctx.fillStyle = '#6e7681';
+    ctx.font = '9px Space Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(v.toFixed(0), x, 312);
+  }
+
+  vals.forEach((item, i)=>{
+    const y = i*(barH+gap)+10;
+    const isGain = item.delta > 0;
+    const isResult = item.type==='result';
+
+    // Label
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '10.5px Space Grotesk, sans-serif';
+    ctx.textAlign = 'right';
+    const shortLabel = item.label.length > 24 ? item.label.slice(0,23)+'…' : item.label;
+    ctx.fillText(shortLabel, labelW, y+barH*0.7);
+
+    // Bar
+    const x1 = toX(Math.min(item.start, item.end));
+    const x2 = toX(Math.max(item.start, item.end));
+    const bW = Math.max(x2-x1, 2);
+
+    if(isResult){
+      ctx.fillStyle = color === 'acc' ? 'rgba(0,212,170,0.25)' : 'rgba(240,180,41,0.25)';
+      ctx.strokeStyle = color === 'acc' ? '#00d4aa' : '#f0b429';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(x1, y, bW, barH, 4); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle = isGain
+        ? 'rgba(63,185,80,0.2)'
+        : 'rgba(248,81,73,0.2)';
+      ctx.strokeStyle = isGain ? '#3fb950' : '#f85149';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(x1, y, bW, barH, 3); ctx.fill(); ctx.stroke();
+    }
+
+    // Connector line from previous
+    if(i>0){
+      ctx.strokeStyle='#444c56'; ctx.lineWidth=1;
+      const prevX = toX(item.start);
+      ctx.beginPath(); ctx.setLineDash([3,3]); ctx.moveTo(prevX,y-gap); ctx.lineTo(prevX,y); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Value
+    ctx.fillStyle = isResult ? (color==='acc'?'#00d4aa':'#f0b429') : (isGain?'#3fb950':'#f85149');
+    ctx.font = 'bold 10px Space Mono, monospace';
+    ctx.textAlign = 'left';
+    const sign = item.delta>=0?'+':'';
+    ctx.fillText(`${sign}${item.delta.toFixed(2)}`, W-valW+4, y+barH*0.7);
+  });
+
+  // Running total line
+  const finalX = toX(running);
+  ctx.strokeStyle = color==='acc'?'#00d4aa':'#f0b429';
+  ctx.lineWidth=2; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(finalX,0); ctx.lineTo(finalX,295); ctx.stroke(); ctx.setLineDash([]);
+
+  // dB axis label
+  ctx.fillStyle='#444c56'; ctx.font='9px Space Mono, monospace'; ctx.textAlign='center';
+  ctx.fillText('dB / dBW scale', W/2, 323);
+}
+
+// ── BRIDGE: compute() calls this to push data into diagrams ──
+function updateDiagramsAndWaterfall(data){
+  // Refresh diagrams (redraw without reopening panels)
+  renderDiagram('svg-uplink',   UP_NODES,  'diag-up-panels', true);
+  renderDiagram('svg-downlink', DN_NODES,  'diag-dn-panels', false);
+  updateDiagValues(data);
+
+  // Uplink waterfall items
+  const upItems = [
+    {label:'GS TX Power',              delta: data.upDbw,         type:'start'},
+    {label:'GS TX Feed Line Loss',     delta:-data.upTxLoss,      type:'loss'},
+    {label:'GS TX Antenna Gain',       delta:+data.upGain,        type:'gain'},
+    {label:'GS Ant. Pointing Loss',    delta:-data.upPointLoss,   type:'loss'},
+    {label:'Co-Polarization Loss',     delta:-data.polUpLoss,     type:'loss'},
+    {label:'Free-Space Path Loss',     delta:-data.upFsl,         type:'loss'},
+    {label:'Atmospheric Loss',         delta:-data.atmLoss,       type:'loss'},
+    {label:'Ionospheric Loss',         delta:-data.upIonLoss,     type:'loss'},
+    {label:'S/C Ant. Pointing Loss',   delta:-data.scPointLoss,   type:'loss'},
+    {label:'S/C Antenna Gain',         delta:+data.scGainUp,      type:'gain'},
+    {label:'S/C RX Feed Line Loss',    delta:-data.rxupLineLoss,  type:'loss'},
+    {label:'Isotropic Signal @ S/C',   delta:0,                   type:'result'},
+  ];
+  drawWaterfall('canvas-up-waterfall', upItems, 0, 'acc');
+
+  // Downlink waterfall items
+  const dnItems = [
+    {label:'S/C TX Power',             delta: data.dnDbw,         type:'start'},
+    {label:'S/C TX Feed Line Loss',    delta:-data.dnTxLoss,      type:'loss'},
+    {label:'S/C TX Antenna Gain',      delta:+data.dnScGain,      type:'gain'},
+    {label:'S/C Ant. Pointing Loss',   delta:-data.dnScPointLoss, type:'loss'},
+    {label:'Co-Polarization Loss',     delta:-data.polDnLoss,     type:'loss'},
+    {label:'Free-Space Path Loss',     delta:-data.dnFsl,         type:'loss'},
+    {label:'Atmospheric Loss',         delta:-data.atmLoss,       type:'loss'},
+    {label:'Ionospheric Loss',         delta:-data.dnIonLoss,     type:'loss'},
+    {label:'GS Ant. Pointing Loss',    delta:-data.gsDnPointLoss, type:'loss'},
+    {label:'GS Antenna Gain',          delta:+data.gsDnGain,      type:'gain'},
+    {label:'GS RX Feed Line Loss',     delta:-data.rxdnLineLoss,  type:'loss'},
+    {label:'Isotropic Signal @ GS',    delta:0,                   type:'result'},
+  ];
+  drawWaterfall('canvas-dn-waterfall', dnItems, 0, 'warn');
+}
+
+// ── PATCH compute() to also call updateDiagramsAndWaterfall ──
+const _origCompute = compute;
+// Re-define compute to collect intermediate values and call diagrams
+// We patch the end of compute by overwriting it after first call populates data
+let _diagData = {};
+
+// Monkey-patch: wrap original to capture state
+(function patchCompute(){
+  const orig = window.compute;
+  window.compute = function(){
+    orig();
+    // Collect current state from inputs and compute results
+    const upW=parseFloat(document.getElementById('up-pwr-w')?.value)||10;
+    const upDbw=10*Math.log10(upW);
+    const upLen=(parseFloat(document.getElementById('up-la')?.value)||0)+(parseFloat(document.getElementById('up-lb')?.value)||0)+(parseFloat(document.getElementById('up-lc')?.value)||0);
+    const upTxLoss=upLen*(parseFloat(document.getElementById('up-loss-m')?.value)||0)+(parseFloat(document.getElementById('up-conn')?.value)||0)*0.05+(parseFloat(document.getElementById('up-filt')?.value)||0)+(parseFloat(document.getElementById('up-other')?.value)||0)+(parseFloat(document.getElementById('up-vswr')?.value)||0);
+    const dnW=parseFloat(document.getElementById('dn-pwr-w')?.value)||2;
+    const dnDbw=10*Math.log10(dnW);
+    const dnLen=(parseFloat(document.getElementById('dn-la')?.value)||0)+(parseFloat(document.getElementById('dn-lb')?.value)||0)+(parseFloat(document.getElementById('dn-lc')?.value)||0);
+    const dnTxLoss=dnLen*(parseFloat(document.getElementById('dn-loss-m')?.value)||0)+(parseFloat(document.getElementById('dn-conn')?.value)||0)*0.05+(parseFloat(document.getElementById('dn-filt')?.value)||0)+(parseFloat(document.getElementById('dn-other')?.value)||0)+(parseFloat(document.getElementById('dn-vswr')?.value)||0);
+    const upFreq=parseFloat(document.getElementById('ant-up-freq')?.value)||145.9;
+    const dnFreq=parseFloat(document.getElementById('ant-dn-freq')?.value)||436.5;
+    const range=parseFloat(document.getElementById('path-range')?.value)||2000;
+    const elev=parseFloat(document.getElementById('path-elev')?.value)||5;
+    const upGainVal=parseFloat(document.getElementById('ant-up-gain')?.value)||0;
+    const scGainUpVal=parseFloat(document.getElementById('ant-sc-gain')?.value)||0;
+    const dnScGainVal=parseFloat(document.getElementById('ant-dn-sc-gain')?.value)||0;
+    const gsDnGainVal=parseFloat(document.getElementById('ant-gs-dn-gain')?.value)||0;
+    const upPointLossVal=parseFloat(document.getElementById('ant-up-ploss')?.value)||0;
+    const scPointLossVal=parseFloat(document.getElementById('ant-sc-ploss')?.value)||0;
+    const dnScPointLossVal=parseFloat(document.getElementById('ant-dn-sc-ploss')?.value)||0;
+    const gsDnPointLossVal=parseFloat(document.getElementById('ant-gs-dn-ploss')?.value)||0;
+    const polUpLossVal=parseFloat(document.getElementById('pol-up-loss')?.value)||0;
+    const polDnLossVal=parseFloat(document.getElementById('pol-dn-loss')?.value)||0;
+    const lambdaUp=299.8/upFreq, lambdaDn=299.8/dnFreq;
+    const distM=range*1000;
+    const upFslVal=22+20*Math.log10(distM/lambdaUp);
+    const dnFslVal=22+20*Math.log10(distM/lambdaDn);
+    const atmL=atmosLoss(elev);
+    const upIonL=ionosLoss(upFreq);
+    const dnIonL=ionosLoss(dnFreq);
+    // RX noise
+    const rxupLineLossVal=((parseFloat(document.getElementById('rxup-la')?.value)||0)+(parseFloat(document.getElementById('rxup-lb')?.value)||0)+(parseFloat(document.getElementById('rxup-lc')?.value)||0))*(parseFloat(document.getElementById('rxup-loss-m')?.value)||0)+(parseFloat(document.getElementById('rxup-bpf')?.value)||0)+(parseFloat(document.getElementById('rxup-other')?.value)||0)+(parseFloat(document.getElementById('rxup-conn')?.value)||0)*0.05;
+    const rxdnLineLossVal=((parseFloat(document.getElementById('rxdn-la')?.value)||0)+(parseFloat(document.getElementById('rxdn-lb')?.value)||0)+(parseFloat(document.getElementById('rxdn-lc')?.value)||0))*(parseFloat(document.getElementById('rxdn-loss-m')?.value)||0)+(parseFloat(document.getElementById('rxdn-bpf')?.value)||0)+(parseFloat(document.getElementById('rxdn-other')?.value)||0)+(parseFloat(document.getElementById('rxdn-conn')?.value)||0)*0.05;
+    const rxupTsVal=parseFloat(document.querySelector('#rxup-r-Ts2')?.textContent)||290;
+    const rxdnTsVal=parseFloat(document.querySelector('#rxdn-r-Ts2')?.textContent)||290;
+
+    updateDiagramsAndWaterfall({
+      upPwr:upW, upDbw, upTxLoss, dnPwr:dnW, dnDbw, dnTxLoss,
+      upGain:upGainVal, scGainUp:scGainUpVal, dnScGain:dnScGainVal, gsDnGain:gsDnGainVal,
+      upPointLoss:upPointLossVal, scPointLoss:scPointLossVal,
+      dnScPointLoss:dnScPointLossVal, gsDnPointLoss:gsDnPointLossVal,
+      polUpLoss:polUpLossVal, polDnLoss:polDnLossVal,
+      upFsl:upFslVal, dnFsl:dnFslVal, atmLoss:atmL,
+      upIonLoss:upIonL, dnIonLoss:dnIonL,
+      rxupLineLoss:rxupLineLossVal, rxdnLineLoss:rxdnLineLossVal,
+      rxupTs:rxupTsVal, rxdnTs:rxdnTsVal,
+    });
+  };
+})();
+
+// Initial diagram render
+renderDiagram('svg-uplink',   UP_NODES,  'diag-up-panels', true);
+renderDiagram('svg-downlink', DN_NODES,  'diag-dn-panels', false);
+</script>
+</body>
+</html>
